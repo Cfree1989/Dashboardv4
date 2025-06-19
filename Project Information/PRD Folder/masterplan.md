@@ -1,7 +1,7 @@
 # 3D Print System Project Plan (Beginner-Friendly Flask API + Next.js Edition)
 
 ## 1. Project Overview
-This project will build a Flask-based 3D print job management system **from scratch**, specifically designed for beginners. The system is tailored for an academic/makerspace setting with up to two staff members operating concurrently on separate computers. It uses individual staff accounts and is designed with safeguards to prevent data conflicts and race conditions inherent in a multi-user environment. The system will handle the workflow from student submission to completion, with file tracking, staff approval, and the ability to open the exact uploaded files directly in local applications.
+This project will build a Flask-based 3D print job management system **from scratch**, specifically designed for beginners. The system is tailored for an academic/makerspace setting with up to two staff members operating concurrently on separate computers. It uses a **workstation-based login system with per-action staff attribution** and is designed with safeguards to prevent data conflicts and race conditions inherent in a multi-user environment. The system will handle the workflow from student submission to completion, with file tracking, staff approval, and the ability to open the exact uploaded files directly in local applications.
 
 > **Key Design Principle**: This project prioritizes **beginner-friendly implementation** with clear, step-by-step guidance and minimal complexity. We start with a basic working system and iterate to add features.
 
@@ -23,7 +23,7 @@ The system will cater primarily to two user roles:
 2.  **Staff approval workflow**: Enable staff to review, slice files, and approve/reject jobs via a **Next.js dashboard**.
 3.  **File lifecycle management**: Track original files through status-based directory structure with `metadata.json` for resilience.
 4.  **Job status tracking**: Clear progression through UPLOADED → PENDING → READYTOPRINT → PRINTING → COMPLETED → PAIDPICKEDUP → ARCHIVED, and REJECTED → ARCHIVED.
-5.  **Clerk authentication**: Professional authentication system for individual staff accounts with secure session management.
+5.  **Workstation Authentication & Action Attribution**: A simple, per-computer shared password system combined with mandatory per-action user attribution to provide both ease of use and full accountability.
 6.  **Email notifications**: **Asynchronously** send automated updates to students for approvals, rejections, and completions.
 7.  **Direct file opening**: Custom `3dprint://` protocol handler to open files in local slicer software.
 
@@ -37,7 +37,7 @@ The system will cater primarily to two user roles:
     *   **Debug panel**: Development interface showing current state, sound settings, and system health
     *   **Last updated indicator**: Timestamp showing when dashboard data was last refreshed
 9.  **Multi-computer support**: System can run on up to two staff computers, as long as both use the same shared storage and database.
-10. **Event Logging**: **Immutable event log** tracking all changes with full audit trail tied to individual staff accounts.
+10. **Event Logging**: **Immutable event log** tracking all changes with full audit trail tied to the **attributed staff member**.
 11. **Thumbnails**: **Asynchronously** generate previews from uploaded files. If thumbnail generation fails, no thumbnail will be displayed, or a generic placeholder may be shown.
 
 ### 2.2 Technical Requirements (Beginner-Focused)
@@ -45,7 +45,7 @@ The system will cater primarily to two user roles:
 #### 2.2.1 Backend (Flask API-Only)
 -   **Framework**: Flask (Python) with **API-only endpoints** - no HTML templates or server-side rendering
 -   **Database**: PostgreSQL via SQLAlchemy ORM
--   **Task Queue**: Celery or RQ for background jobs (emails, thumbnail generation, and a recurring job to check for expired confirmation tokens).
+-   **Task Queue**: RQ for background jobs (emails, thumbnail generation, and a recurring job to check for expired confirmation tokens).
 -   **Email**: Flask-Mail with Office 365 SMTP
 -   **Sibling File Detection**: A configurable list of slicer file extensions (e.g.,`.3mf`, `.form`, `.idea`) will be used to automatically detect when a staff member has saved a new authoritative file.
 -   **File Storage**: Network-mounted folders with standardized structure:
@@ -76,7 +76,7 @@ The system will cater primarily to two user roles:
     -   **Sound Notifications**: Configurable audio alerts for new job uploads with browser compatibility
     -   **Visual Alert System**: "NEW" badges and pulsing animations for unreviewed jobs
     -   **Job Age Tracking**: Color-coded time elapsed display with human-readable formatting
-    -   **Interactive Modals**: Approval/rejection workflows with form validation
+    -   **Interactive Modals with User Attribution**: All state-changing modals (approve, reject, etc.) will require the user to select their name from a dropdown before proceeding, ensuring every action is logged with the correct user.
     -   **Notes System**: Inline editing with auto-save and keyboard shortcuts
     -   **Debug Panel**: Development troubleshooting with state visibility
 -   **Routing Structure**:
@@ -84,22 +84,21 @@ The system will cater primarily to two user roles:
     app/
     ├─ dashboard/page.tsx     # Staff dashboard
     ├─ submit/page.tsx        # Student submission form
-    ├─ login/page.tsx         # Staff login (Clerk)
+    ├─ login/page.tsx         # Workstation login page
     └─ confirm/[token]/page.tsx # Student confirmation
     ```
 
-#### 2.2.3 Authentication (Clerk Integration)
--   **Clerk Authentication**: Professional authentication service for individual staff accounts
--   **Features**: Multi-factor authentication, session management, user management
--   **Staff Accounts**: Individual accounts for each staff member with proper audit trails
--   **Integration**: Seamless Next.js integration with Clerk SDK
--   **Token Management**: Clerk handles JWT tokens and session management automatically
--   **Backend Validation**: Flask backend validates Clerk-issued JWTs in Authorization headers
--   **User Information**: Staff actions logged with individual user identification for accountability
+#### 2.2.3 Authentication (Workstation Login & Action Attribution)
+To ensure both ease of use in a chaotic lab environment and full accountability, the system uses a hybrid authentication model. This model replaces traditional individual user sessions.
+
+- **Workstation Login**: Each physical computer terminal in the lab is treated as a "Workstation" and is assigned its own shared, long-lived password. Staff log in to the workstation once at the beginning of the day. The session is configured to last the entire workday.
+- **Persistent Workstation Display**: The UI will always prominently display the name of the logged-in workstation (e.g., "Workstation: Front Desk").
+- **Mandatory Action Attribution**: For any state-changing operation (e.g., approving a job, marking it complete, adding a note), the UI modal for that action will contain a **mandatory dropdown menu** labeled "Performing Action As:". The staff member must select their own name from the list before they can proceed.
+- **Accountability**: This ensures that while the workstation's session is shared, every critical action is explicitly attributed to a specific staff member in the event logs. The `Event` model will store both the `workstation_id` and the `triggered_by` (the staff member's name).
+- **Staff List Management**: The list of staff members for the attribution dropdown will be managed via a simple configuration file or an admin interface.
 
 #### 2.2.4 Key Constraints & Principles
-- **No Docker**: Simple native installation and deployment
-- **No Next.js API Routes**: All server logic handled by Flask backend
+- **No Individual User Logins**: Staff do not have their own passwords for the system. Authentication is handled at the workstation level.
 - **Beginner-Friendly**: Clear explanations and step-by-step setup
 - **API-First Design**: Frontend consumes RESTful Flask API endpoints
 - **CORS Configuration**: Enabled for Next.js development server integration
@@ -108,7 +107,7 @@ The system will cater primarily to two user roles:
     -   Cross-Origin Resource Sharing (CORS) will be enabled on the Flask API to allow requests from the Next.js frontend.
     -   The API will be stateless and RESTful.
     -   Native **fetch API** for HTTP requests with error handling and retry logic.
--   **Task Queue**: Celery or RQ for **asynchronous processing** (emails, thumbnails).
+-   **Task Queue**: RQ for **asynchronous processing** (emails, thumbnails).
 -   **API Security & Rate Limiting**:
     -   **Flask-Limiter** integration for abuse protection:
         -   `/api/submit`: 3 submissions per IP per hour
@@ -123,14 +122,14 @@ The system will cater primarily to two user roles:
 -   **Pricing Model**: Weight-only pricing ($0.10/gram filament, $0.20/gram resin) with $3.00 minimum charge.
 -   **Time Input**: Hour-based time inputs with conservative rounding (always round UP to nearest 0.5 hours).
 -   **Critical Dependencies**:
-    -   **Backend**: `Flask`, `Flask-SQLAlchemy`, `Flask-Migrate`, `Flask-CORS`, `Flask-Limiter`, `psycopg2-binary`, `python-dotenv`, `PyJWT`, `Celery`/`RQ`.
+    -   **Backend**: `Flask`, `Flask-SQLAlchemy`, `Flask-Migrate`, `Flask-CORS`, `Flask-Limiter`, `psycopg2-binary`, `python-dotenv`, `PyJWT`, `rq`.
     -   **Frontend**: `next`, `react`, `react-dom`, `typescript`, `tailwindcss`, `@radix-ui/*`, `lucide-react`, `date-fns`, `class-variance-authority`, `clsx`, `tailwind-merge`.
 
 ### 2.3 Beginner-Friendly Architecture Principles
 This project will adhere to simplicity and clarity while building a robust foundation:
 
 #### 2.3.1 Core Architectural Decisions
-1.  **Authentication**: **Clerk-based authentication** for professional individual staff accounts with built-in session management and security.
+1.  **Authentication**: **Workstation-level shared passwords** combined with **mandatory per-action staff attribution** to ensure both ease of use and accountability. No individual user accounts or complex session management.
 2.  **API Design**: **Flask API-only backend** with clear RESTful endpoints, no HTML templates or server-side rendering.
 3.  **Frontend Separation**: **Next.js frontend** consumes API endpoints, complete separation of concerns.
 4.  **Models**: Essential `Job` model, plus an **`Event` model** for comprehensive logging and audit trails.
@@ -145,7 +144,7 @@ This project will adhere to simplicity and clarity while building a robust found
 
 #### 2.3.3 Technology Stack Simplification
 1.  **Docker-Based Environment**: The entire application stack is defined in a `docker-compose.yml` file, ensuring a consistent, reproducible environment for both development and production. This simplifies setup and eliminates cross-platform compatibility issues.
-2.  **No Complex Auth**: Clerk handles all authentication complexity, provides professional UI.
+2.  **Simplified Authentication**: A custom-built workstation login system replaces the need for complex third-party identity providers.
 3.  **No Microservices**: Single Flask application with clear module organization.
 4.  **Progressive Enhancement**: Build solid foundation first, then add advanced features like custom protocol handlers.
 5.  **Progressive Enhancement**: Build solid foundation, then add advanced dashboard features.
@@ -165,7 +164,7 @@ This project will adhere to simplicity and clarity while building a robust found
 -   **Clean Interface**: Simple, professional dashboard showing job cards with essential information
 -   **Basic Actions**: Approve/reject modals with form validation and cost calculation
 -   **Job Management**: Status updates with clear visual feedback
--   **Clerk Authentication**: Seamless login experience with professional authentication UI
+-   **Workstation Authentication**: Seamless login experience for each computer terminal.
 
 #### 2.4.2 Advanced UX Features
 **Enhanced Operational Dashboard UX**:
@@ -215,7 +214,7 @@ V0DASHBOARDV4/
 │   │   │   └── success/
 │   │   │       └── page.tsx # Submission success
 │   │   ├── login/
-│   │   │   └── page.tsx     # Staff login (Clerk)
+│   │   │   └── page.tsx     # Workstation login page
 │   │   ├── confirm/
 │   │   │   └── [token]/
 │   │   │       └── page.tsx # Student email confirmation
@@ -258,14 +257,14 @@ V0DASHBOARDV4/
 │   │   │   └── event.py     # Event log model
 │   │   ├── routes/
 │   │   │   ├── __init__.py
-│   │   │   ├── auth.py      # Authentication endpoints (Clerk validation)
+│   │   │   ├── auth.py      # Authentication endpoints (workstation validation)
 │   │   │   ├── jobs.py      # Job management endpoints
 │   │   │   └── submit.py    # Student submission endpoints
 │   │   ├── services/        # Business logic
 │   │   │   ├── __init__.py
 │   │   │   ├── file_service.py
 │   │   │   ├── email_service.py
-│   │   │   └── auth_service.py  # Clerk token validation
+│   │   │   └── auth_service.py  # Workstation token validation
 │   │   └── utils/           # Utilities
 │   │       ├── __init__.py
 │   │       ├── decorators.py # Auth decorators
@@ -331,11 +330,12 @@ class Job(db.Model):
    confirm_token = db.Column(db.String(128), nullable=True, unique=True)
    confirm_token_expires = db.Column(db.DateTime, nullable=True)
    is_confirmation_expired = db.Column(db.Boolean, default=False, nullable=False)
+   confirmation_last_sent_at = db.Column(db.DateTime, nullable=True)
    
    # Staff Management
    reject_reasons = db.Column(db.JSON, nullable=True)
    staff_viewed_at = db.Column(db.DateTime, nullable=True)    # For visual alerts
-   last_updated_by = db.Column(db.String(100), nullable=True) # Clerk user ID
+   last_updated_by = db.Column(db.String(100), nullable=True) # Staff member name from attribution dropdown
    notes = db.Column(db.Text, nullable=True)                  # Staff notes
    
    # Timestamps
@@ -354,13 +354,14 @@ class Event(db.Model):
    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
    event_type = db.Column(db.String(50))         # 'JobCreated', 'StaffApproved', etc.
    details = db.Column(db.JSON, nullable=True)   # Contextual information
-   triggered_by = db.Column(db.String(100))      # Clerk user ID or 'student'/'system'
-   user_name = db.Column(db.String(100))         # Display name for audit trail
+   triggered_by = db.Column(db.String(100))      # Staff member's name from attribution dropdown
+   user_name = db.Column(db.String(100))         # (DEPRECATED - Use triggered_by)
+   workstation_id = db.Column(db.String(100))    # Identifier for the physical computer
 ```
 
 #### 3.2.2 Key Design Decisions
 
-**Authentication Integration**: The `last_updated_by` and `triggered_by` fields store Clerk user IDs, enabling full accountability and audit trails tied to individual staff members.
+**Authentication Integration**: The `last_updated_by` and `triggered_by` fields store the staff member's name selected from the attribution dropdown, enabling full accountability for every action. The `workstation_id` provides additional context for where the action originated.
 
 **File Resilience**: Both `file_path` and `metadata_path` ensure data integrity even if database and file system become disconnected.
 
@@ -370,42 +371,43 @@ class Event(db.Model):
 
 ### 3.3 Authentication Architecture
 
-#### 3.3.1 Staff Authentication (Clerk Integration)
-**Professional Authentication Service**: The system uses Clerk for staff authentication, providing enterprise-grade security and user management capabilities.
+The system's authentication is designed for a high-turnover, shared-terminal environment, prioritizing operational simplicity while maintaining strict per-action accountability. It uses two distinct models for staff and students.
 
-**Key Features**:
-- **Individual Staff Accounts**: Each staff member has their own account with proper identity management
-- **Multi-Factor Authentication**: Optional MFA support for enhanced security
-- **Session Management**: Automatic token refresh and secure session handling
-- **User Management**: Easy addition/removal of staff members through Clerk dashboard
+#### 3.3.1 Staff Authentication: Workstation & Attribution Model
+- **Workstation Login**: Each physical computer is considered a "Workstation" and is assigned a unique password. This password is used to initiate a long-lived session (e.g., 12 hours) for that specific computer. Staff do not have individual passwords.
+- **Session Management**: A simple, long-lived JWT is issued to the browser upon successful workstation login. This token contains the `workstation_id` (e.g., "Front-Desk-Computer").
+- **Per-Action Attribution**: For every state-changing action (approve, reject, etc.), the UI modal **requires** the acting user to select their name from a dropdown list of active staff members.
+- **API Requirement**: The API endpoints for these actions will require a `staff_name` field in the request body. The backend will validate that the name is on the official staff list.
 
-**Technical Implementation**:
-- **Frontend**: Clerk React SDK provides seamless authentication components and hooks
-- **Backend**: Flask validates Clerk-issued JWTs using Clerk's public keys
-- **Token Flow**: Clerk handles all JWT generation, validation, and refresh automatically
-- **User Context**: Clerk user ID and profile information available throughout the application
-
-#### 3.3.2 Student Authentication
-**Email-Based Confirmation**: Students don't need accounts but use secure token-based confirmation for job approval.
+#### 3.3.2 Student Authentication: Email-Based Confirmation
+Students do not have accounts or passwords. Instead, their approval for a print job is handled via a secure, one-time-use email link.
 
 **Confirmation Flow**:
-- Secure tokens generated using itsdangerous library
-- Tokens embedded in email URLs pointing to frontend confirmation pages
-- Time-limited expiration with resend capabilities
-- No persistent student sessions required
+- **Secure Tokens**: When a job is approved by staff, the backend generates a unique, cryptographically-signed token using a library like `itsdangerous`.
+- **Token-Based URL**: This token is embedded into a URL that points to the frontend's confirmation page (e.g., `/confirm/<token>`).
+- **Time-Limited Expiration**: The token is set to expire after a configured period (e.g., 72 hours) to ensure decisions are made in a timely manner. The system includes workflows for students to request a new link if theirs expires.
+- **Stateless**: This process is entirely stateless. The system validates the token without requiring any kind of persistent session or cookie on the student's side.
 
 #### 3.3.3 Security & Accountability
-**Comprehensive Audit Trail**: Every action is logged with individual staff member identification:
-- **Event Logging**: All job actions recorded with Clerk user ID and display name
-- **File Operations**: Staff member tracked for all file movements and modifications
-- **Admin Actions**: Override and manual actions fully attributed to specific users
-- **Timeline Tracking**: Complete chronological history of all system interactions
+- **Comprehensive Audit Trail**: Every staff action is logged with:
+    - `triggered_by`: The name of the staff member who performed the action.
+    - `workstation_id`: The computer from which the action was performed.
+- **File Operations**: All file movements and modifications are fully attributed.
+- **Admin Actions**: Override and manual actions are fully attributed.
+- **Security Benefits**: While using shared workstation passwords, this model prevents anonymous actions, which is the primary security and management risk. When a staff member leaves, they are simply removed from the active staff list in the configuration, preventing them from being selected in the attribution dropdown.
 
-**Security Benefits**:
-- **No Shared Passwords**: Eliminates security risks of shared credentials
-- **Individual Accountability**: Every action traceable to specific staff member
-- **Professional Standards**: Enterprise-grade authentication suitable for institutional use
-- **Compliance Ready**: Audit trails support institutional security requirements
+---
+**Authentication**
+
+*Note: Authentication is handled by a simple, custom-built workstation login system.*
+
+*   `POST /auth/login`
+    *   **Description**: Authenticates a workstation.
+    *   **Body**: `{ "workstation_id": "front-desk", "password": "shared-password" }`
+    *   **Success (200)**: `{ "token": "workstation-jwt" }`
+    *   **Error (401)**: `{ "message": "Invalid workstation ID or password" }`
+
+*   **JWT Validation Middleware**: All protected endpoints validate the workstation JWT in the `Authorization: Bearer <token>` header. The middleware makes the `workstation_id` available to the request context.
 
 ### 3.4 Job Lifecycle & Workflow Management
 
@@ -421,7 +423,7 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 **Standardized File Naming**: `FirstAndLastName_PrintMethod_Color_SimpleJobID.original_extension`
 
-**Event-Driven Architecture**: Every action generates immutable event logs with Clerk user attribution for complete audit trails.
+**Event-Driven Architecture**: Every action generates immutable event logs with staff member attribution for complete audit trails.
 
 #### 3.4.2 Workflow Status Progression
 
@@ -435,9 +437,10 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
   * Database updates: `file_path`, `original_filename`, `display_name`, `metadata_path`
   * Thumbnail generation (asynchronous, failure-tolerant)
 * **System Actions:** 
-  * Event logging with system attribution
-  * Student success page display
-  * Job immediately visible in staff dashboard
+  * Staff member attribution for the approval action is logged.
+  * Print parameters (weight, time, cost) submitted by the staff are validated.
+  * A secure confirmation token is generated for the student.
+  * An approval email, containing the job details and confirmation link, is queued for sending.
 
 **Student Submission UI/UX (Corresponds to 'Uploaded' Status)**
     **Page Flow**:
@@ -477,26 +480,30 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 **2. PENDING Status (Awaiting Student Confirmation)**
 * **Trigger:** Staff member approves a job through the dashboard, triggering a `POST /api/jobs/<id>/approve` request.
-* **Authoritative File Detection (Sibling File Scan):**
-  * Upon receiving the approval request, the backend API automatically scans the job's directory (e.g., `storage/Uploaded/`) for a "sibling" file.
-  * A sibling file is defined as having the **exact same base name** as the current authoritative file but with a different, recognized slicer file extension (from the configurable list mentioned in Section 2.2.1).
-  * **If a sibling file is found:** The system designates it as the new authoritative file. It updates the `job.file_path` and `job.display_name` in the database and logs a `FileSuperseded` event. The original student upload is always preserved. If multiple potential files exist, the most recently modified one is chosen.
-  * **If no sibling file is found:** The original file remains authoritative.
+* **Explicit Authoritative File Selection**: To eliminate ambiguity, the system requires staff to explicitly designate the correct file during the approval process. The workflow is as follows:
+  1.  When a staff member initiates an approval, the frontend requests a list of potential authoritative files from the backend.
+  2.  The backend scans the job's directory (e.g., `storage/Uploaded/`) for the original file and any other valid model files (e.g., `.stl`, `.obj`, `.3mf`, `.form`).
+  3.  This list is presented to the staff member within the approval modal, allowing them to explicitly select the file that should be used for printing. The UI will recommend the most recently modified slicer file as a default.
+  4.  The approval request sent to the backend includes the filename of the selected authoritative file.
 * **File Operations:**
-  * The (now potentially updated) authoritative file and its `metadata.json` are moved from `storage/Uploaded/` → `storage/Pending/`.
-  * The database is updated with the new `file_path` and `metadata_path`.
+  * The explicitly chosen authoritative file and its `metadata.json` are moved from `storage/Uploaded/` → `storage/Pending/`. If the chosen file was not the original, the original student upload is also moved to `storage/Pending/` for archival purposes but is no longer considered the authoritative version.
+  * The database is updated with the new `file_path`, `display_name`, and `metadata_path`.
 * **System Actions:**
-  * Clerk user attribution for the approval action is logged.
+  * Staff member attribution for the approval action is logged.
   * Print parameters (weight, time, cost) submitted by the staff are validated.
   * A secure confirmation token is generated for the student.
   * An approval email, containing the job details and confirmation link, is queued for sending.
 
 **Staff Approval UI/UX (Corresponds to 'Pending' Status)**
-- Approval Confirmation Modal: Title, message, required input fields (weight, time, material), calculated cost, cancel/approve buttons.
+- **Interactive Approval Modal**: The modal will feature:
+  - **Authoritative File Selection**: A list of radio buttons showing all valid model files found in the job's directory. The most recently modified non-original file will be pre-selected as a suggestion. The staff member **must** confirm or change this selection.
+  - **Required Input Fields**: Standard inputs for weight (grams) and print time (hours).
+  - **Calculated Cost**: A read-only field displaying the calculated cost based on the inputs.
+  - **Action Buttons**: "Cancel" and "Approve" buttons. The "Approve" button is disabled until a file is selected and all required fields are filled.
 
 #### 3. Rejected
 * **Trigger:** Staff reviews an "Uploaded" job and clicks "Reject". The frontend sends a `POST` request to `/api/jobs/<id>/reject`.
-* **File Operations:** The file typically remains in storage/Uploaded/ or may be moved to an storage/Archived_Rejected/. Original uploaded file is preserved.
+* **File Operations:** The job's files remain in their current location (e.g., `storage/Uploaded/`). The job's status is updated to `REJECTED`, and it will be moved to `storage/Archived/` later by the standard data retention and archival process (see Section 5.7). The original uploaded file is preserved.
 * **Key Actions:** Staff selects reasons in the React UI, backend logs event. Asynchronous task (SendRejectionEmail) triggered.
 * **Email Notification:** Rejection email sent via task queue including reasons.
 
@@ -559,10 +566,16 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 - **Resend Email Controls**: Generate new confirmation tokens when original links expire
 
 **Fallback/Manual Processes for Pending Status:**
-- If a student doesn't confirm within the token expiry period, staff are alerted (e.g., via dashboard).
-- Staff can manually resend a confirmation email (generating a new token).
+- If a student doesn't confirm within the token expiry period (e.g., 72 hours), the job is visually flagged on the staff dashboard (e.g., with a yellow warning icon) so staff can take proactive measures.
+- Staff can manually resend a confirmation email (generating a new token), which is a rate-limited action.
 - Staff can manually mark a job as confirmed if email confirmation fails (e.g., student confirms verbally). This action is logged.
-- **Expired Token Handling**: Clear UX flow for expired confirmation links with recovery options
+- Students have a self-service option on the "expired link" page to request a new, rate-limited confirmation email.
+
+**Expired Token and Resend Workflow (Student-Facing)**
+- **Expired Link Handling**: When a student clicks an invalid or expired confirmation link, they are directed to a user-friendly frontend page (`/confirm/expired?job_id=...`).
+- **Clear Messaging**: This page will clearly state that the link has expired and explain the next steps.
+- **Self-Service Resend**: The page will feature a "Resend Confirmation Email" button. Clicking this triggers a new, public, but rate-limited API endpoint to send a fresh email with a new token.
+- **Throttling**: To prevent abuse, this self-service resend option is limited (e.g., once per hour per job). The UI should reflect this, disabling the button and showing a countdown if a recent request has been made.
 
 **UI/UX Implementation Notes:**
 - All status changes must provide immediate visual feedback
@@ -726,14 +739,14 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 **Backend Components:**
 - **Flask API Application**: RESTful API with Blueprint organization, PostgreSQL database integration, and comprehensive job/event models
-- **Clerk Authentication Integration**: JWT validation middleware, user context management, and secure API endpoint protection
+- **Workstation Authentication**: JWT-based authentication for workstations with per-action staff attribution.
 - **File Management Services**: Robust file handling, cost calculation algorithms, and resilient `metadata.json` generation
-- **Asynchronous Task Processing**: Celery/RQ integration for email delivery and thumbnail generation
+- **Asynchronous Task Processing**: RQ integration for email delivery and thumbnail generation
 - **Custom Protocol Handler**: `SlicerOpener.py` application with security validation and slicer integration
 
 **Frontend Components:**
 - **Next.js Application**: Modern App Router architecture with TypeScript, Tailwind CSS, and comprehensive shadcn/ui component library
-- **Authentication Flow**: Seamless Clerk integration with automatic session management and protected route handling  
+- **Authentication Flow**: Simple login form for workstations, JWT storage in browser, and inclusion in subsequent API requests.
 - **Dashboard Interface**: Real-time updating dashboard with sound notifications, visual alerts, job age tracking, and advanced filtering
 - **Interactive Workflows**: Sophisticated approval/rejection modals, inline notes editing, and comprehensive form validation
 - **Student Submission Interface**: Dynamic form with contextual validation, progressive disclosure, and educational content
@@ -747,18 +760,18 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 ### 5.2 Security Architecture & Considerations
 
-#### 5.2.1 Authentication Security (Clerk Integration)
-- **Enterprise-Grade Authentication**: Clerk provides industry-standard OAuth, JWT validation, and session management
-- **Individual Staff Accountability**: Each staff member has unique credentials with full audit trail capability
-- **Multi-Factor Authentication**: Optional MFA support for enhanced security based on institutional requirements
-- **Session Management**: Automatic token refresh, secure cookie handling, and proper session lifecycle management
-- **No Shared Credentials**: Eliminates security risks associated with shared passwords or single-point authentication failures
+#### 5.2.1 Authentication Security (Workstation & Attribution Model)
+- **Shared Workstation Credentials**: Each physical computer terminal has its own shared password, simplifying access in a busy lab environment. This avoids the need for staff to remember individual passwords.
+- **Mandatory Staff Attribution**: The primary security control is mandatory, per-action attribution. Every state-changing operation requires the staff member to select their name from a dropdown, ensuring all actions are logged and traceable to a specific person.
+- **Traceability**: The combination of `workstation_id` and the attributed `staff_name` provides a clear audit trail for every critical action, mitigating the risks of shared credentials.
+- **Session Management**: Secure, short-lived JWTs are used for workstation sessions, with secure cookie handling and proper lifecycle management.
+- **Staff List Management**: Removing a staff member from the centrally managed list immediately prevents them from being attributed to any new actions, effectively revoking their ability to make changes in the system.
 
 #### 5.2.2 Application Security
 - **Secure File Upload Handling**: Comprehensive validation including file type verification, size limits, and content scanning
 - **Student Confirmation Security**: Time-limited, cryptographically signed tokens using itsdangerous library with proper expiration handling
 - **Path Traversal Prevention**: Strict validation of all file paths with absolute path resolution and base directory containment checks
-- **API Endpoint Protection**: All state-changing requests require valid Clerk JWT authentication with proper role validation
+- **API Endpoint Protection**: All state-changing requests require a valid workstation JWT for authentication.
 - **Content Security Policy**: Comprehensive CSP headers to prevent XSS and other injection attacks
 
 #### 5.2.3 System-Level Security
@@ -779,13 +792,21 @@ The entire application stack is designed to be deployed using Docker and Docker 
     *   `backend`: The Flask API application, served by Gunicorn.
     *   `frontend`: The Next.js application. For production, this container will run `npm start` to serve the application with server-side rendering.
     *   `db`: A PostgreSQL database service, with its data persisted in a Docker volume to prevent data loss on container restart.
-    *   `worker`: The Celery/RQ background worker for handling asynchronous tasks.
+    *   `worker`: The RQ background worker for handling asynchronous tasks.
     *   `redis`: The message broker (Redis) for the background worker queue.
 
 2.  **Deployment Process**:
     *   **Host Machine Setup**: One of the lab computers (or a dedicated server) will act as the host for the Docker containers. Docker and Docker Compose must be installed on this machine.
-    *   **Configuration**: All environment-specific variables (database passwords, secret keys, API URLs) are managed in `.env` files that are read by Docker Compose.
-    *   **Launch**: The entire application is launched with a single command: `docker-compose up -d`. This builds the necessary images and starts all services in the correct order.
+    *   **Configuration & Secrets Management**:
+        - **Method**: For this beginner-focused project, all environment-specific variables (database passwords, secret keys, API URLs) are managed in `.env` files that are read by Docker Compose.
+        - **Security Note**: While using `.env` files is straightforward and suitable for this project's scope, it is not a recommended practice for high-security production environments. In such cases, a more robust solution like **Docker Secrets**, a dedicated service like **HashiCorp Vault**, or encrypted environment variables should be used to protect sensitive credentials. This is considered an advanced topic beyond the scope of this guide.
+    *   **Database Migrations**: Database schema changes are managed by `Flask-Migrate`. Applying migrations during a deployment or update is a **deliberate, manual step**:
+        1.  After updating the code, run the `docker-compose build` command to create new images.
+        2.  Start only the database service: `docker-compose up -d db`.
+        3.  Run the migration command inside a temporary `backend` container: `docker-compose run --rm backend flask db upgrade`.
+        4.  Once the migration is complete, start the rest of the application: `docker-compose up -d`.
+        - **Rationale**: This manual process is chosen for its simplicity and safety. It prevents potential race conditions or failed startup loops that can occur with automated migration scripts in container entrypoints, making it more reliable for a beginner-level operational workflow.
+    *   **Launch**: After the initial setup and any necessary migrations, the entire application is launched with a single command: `docker-compose up -d`. This builds the necessary images if they don't exist and starts all services in the correct order.
 
 3.  **Accessing the System**:
     *   Staff will access the Next.js frontend by navigating to the IP address of the host machine in their web browser (e.g., `http://192.168.1.50`).
@@ -803,6 +824,7 @@ The entire application stack is designed to be deployed using Docker and Docker 
 - Admin Rights: Registering protocol handlers or installing software might require admin rights. The helper app can be deployed to user-space if packaged correctly.
 - Storage Quotas: Be mindful of file sizes and implement cleanup if quotas are restrictive.
 - Alternative File Access: If custom protocol is unfeasible, a fallback could be instructing staff to copy a displayed network path, or a less ideal "download and open".
+- **Email Deliverability**: To minimize the risk of emails being marked as spam, the outgoing mail server must be correctly configured with SPF and DKIM records. This should be coordinated with university IT.
 
 ### 5.5 Cost Matrix & Calculation
 - Filament Print Cost: $0.10 per gram.
@@ -856,16 +878,17 @@ This plan outlines the steps to restore the system to a functional state from a 
 - To ensure backups are viable, lab staff are responsible for performing a test restore to a non-production environment on a quarterly basis. This validates both the integrity of the backups and the accuracy of the recovery plan.
 
 ### 5.9 System Health and Integrity Auditing
-To ensure long-term data resilience, the system will include an admin-triggered integrity audit tool to identify and resolve discrepancies between the database and the file storage. This process is crucial for preventing orphaned files and broken database links.
+To ensure long-term data resilience, the system will include an admin-triggered integrity audit tool to identify and resolve discrepancies between the database and the file storage. This process is crucial for preventing orphaned files and broken database links, and serves as the recovery mechanism for incomplete file transactions.
 
-- **Two-Way Integrity Scan**: The tool will perform a comprehensive scan:
+- **Three-Way Integrity Scan**: The tool will perform a comprehensive scan:
     1.  **Filesystem to Database (Orphaned Files)**: It scans all `storage/` directories and verifies that each job file has a corresponding, active entry in the database. Files without a database entry are flagged as "Orphaned."
     2.  **Database to Filesystem (Broken Links)**: It iterates through all job records in the database and confirms that the `file_path` and `metadata_path` point to existing files on the disk. Entries with missing files are flagged as having a "Broken Link."
+    3.  **Database to Filesystem (Stale Files)**: It checks for files that share a job ID with a database record but are located in a directory that does *not* match the status recorded in the database. This specifically identifies remnants of incomplete "copy-then-delete" operations, flagging them as "Stale" and safe for deletion.
 
 - **Admin-Driven Resolution**: The audit tool will **not** automatically delete or modify any data. Instead, it will:
-    -   Generate a detailed report listing all identified orphans and broken links.
+    -   Generate a detailed report listing all identified orphans, broken links, and stale files.
     -   Present this report to the administrator in a dedicated "System Health" section of the dashboard.
-    -   Provide the administrator with the tools to safely resolve issues (e.g., a button to delete selected orphaned files or to flag a job with a broken link for manual review). All resolution actions will be logged in the `Event` table.
+    -   Provide the administrator with the tools to safely resolve issues (e.g., a button to delete selected orphaned or stale files, or to flag a job with a broken link for manual review). All resolution actions will be logged in the `Event` table.
 
 ### 5.10 Professional UI Design Patterns (PROVEN SUCCESSFUL)
 - Card-style dashboard interface, anti-redundancy principles, time display and management, display name formatting system, template filters, and all other proven UI/UX patterns as detailed in section 6.
@@ -987,21 +1010,28 @@ To ensure high availability and prevent silent failures of critical backend comp
 - **Component Status Checks**: The health check will verify the status of all critical infrastructure components:
     1.  **API Service**: The endpoint responding with a `200 OK` status confirms the Flask API is running.
     2.  **Database Connectivity**: The endpoint will attempt a simple, non-locking query (e.g., `SELECT 1`) to confirm the database is reachable and responsive.
-    3.  **Background Worker Connectivity**: The endpoint will check the connection to the message broker (e.g., Redis) used by Celery/RQ to ensure background tasks can be queued and processed.
+    3.  **Background Worker Connectivity**: The endpoint will check the connection to the message broker (e.g., Redis) used by RQ to ensure background tasks can be queued and processed.
 - **Alerting**: If the health check endpoint fails to respond or reports a failure in any component, an external monitoring service is expected to automatically trigger alerts (e.g., email, SMS) to designated system administrators (lab staff), enabling rapid response to outages.
 
 ### 5.17 Concurrency Control and Data Integrity
 To ensure data consistency and prevent race conditions in a multi-user, multi-computer environment, the system will implement the following safeguards:
 
-- **API-Level Job Locking**: To prevent two staff members from simultaneously performing conflicting state-changing actions on the same job, the system will use an API-level locking mechanism.
-    - When a user initiates a critical action (e.g., opening an approval modal), the backend API will temporarily lock the job record in the database (e.g., setting a `locked_by_user` field and a `locked_until` timestamp).
-    - If another user attempts a conflicting action on the locked job, the API will respond with a `409 Conflict` error, informing the second user that the job is currently being edited.
-    - Locks will have a short, automatic expiration (e.g., 5 minutes) to prevent jobs from becoming permanently stuck.
-    - The frontend must handle the `409 Conflict` response gracefully by displaying a notification and refreshing the job data.
+- **API-Level Job Locking**: To prevent two staff members from simultaneously performing conflicting state-changing actions on the same job, the system will use a robust, stateful, API-level locking mechanism.
+    - **Acquiring a Lock**: Before initiating a critical action (e.g., opening an approval modal), the frontend will first request a lock from the backend. The API will set a `locked_by_user` field and a `locked_until` timestamp (e.g., 5 minutes in the future) on the job.
+    - **Lock Heartbeat**: While a user has a job locked for an extended UI interaction (like an open modal), the frontend will automatically send a periodic "heartbeat" request to extend the lock's duration. This prevents the lock from expiring during legitimate use.
+    - **Releasing a Lock**: When the user completes or cancels the action, the frontend will explicitly release the lock. Critical state-changing API endpoints must guarantee the release of the lock upon completion of the request, regardless of success or failure. This ensures that a failed operation does not leave a job permanently locked.
+    - **Pre-Action State Verification**: To prevent users from acting on stale data, the frontend **must** re-fetch the latest state of a job (including lock and review status) immediately before displaying any state-changing UI, such as an approval or rejection modal. If the data has changed (e.g., another user has already reviewed or locked the job), the UI must inform the user and prevent the action.
+    - **Handling Conflicts & UI Feedback**: If a user attempts to lock an already-locked job, the API will return a `409 Conflict` error, including who holds the lock. The UI must handle this gracefully by displaying a notification (e.g., "This job is being edited by Jane Doe") and disabling editing controls.
+    - **Surfacing Lock Status**: The `GET /jobs` and `GET /jobs/<job_id>` endpoints will include the current lock status in their responses, allowing the UI to proactively show if a job is locked.
+    - **Automatic Expiration & Admin Override**: The automatic expiration serves as a fallback for abandoned sessions. For truly "stuck" locks, an administrator will have a dedicated API endpoint to forcibly release them, with the action being fully audited.
 
-- **Transactional File Operations**: All workflows that involve both database updates and file system modifications (e.g., approving a job, changing its status) **must** be executed within a database transaction.
-    - The process will be: 1) start transaction, 2) perform all database writes, 3) perform file system move/copy, 4) commit transaction if file operation succeeds, or 5) rollback transaction if file operation fails.
-    - This ensures that the system's state remains consistent and prevents scenarios where a file is moved but the corresponding database update fails, or vice-versa.
+- **Transactional File Operations**: All workflows that involve both database updates and file system modifications (e.g., approving a job) must be designed for resilience against unexpected failures (e.g., a server crash). The strategy is to ensure the database remains the "source of truth" and that inconsistencies can be detected and corrected.
+    - **Resilient Workflow ("Copy, Update, then Delete")**: Instead of a simple "move" operation, the sequence will be:
+        1.  **Copy**: The authoritative file is first *copied* to the destination directory (e.g., from `/Uploaded` to `/Pending`).
+        2.  **Update Database**: Within a database transaction, the job's status and file path are updated to reflect the new location.
+        3.  **Commit**: The database transaction is committed. At this point, the system's "source of truth" now correctly points to the new file.
+        4.  **Delete Original**: The original file in the source directory is deleted.
+    - **Recovery Path**: If a crash occurs between steps 3 and 4, the system is left in a consistent state from the database's perspective, but a stale, duplicate file now exists in the old directory. This is not an error that affects live operations but is a cleanup task. The **System Health and Integrity Audit** is designed to detect and resolve exactly this scenario by identifying files that exist in storage but do not match the authoritative path in the database.
 
 ### 5.18 Staff-Level Error Correction
 To handle common human errors gracefully without requiring administrator intervention, the system will provide a "revert" capability for certain status changes. This empowers staff to correct their own mistakes quickly and cleanly.
@@ -1035,9 +1065,9 @@ To provide staff with an efficient way to remove erroneous, unwanted, or duplica
 - **Scope**: Deletion is a destructive action and is therefore only permitted for jobs in `UPLOADED` or `PENDING` statuses. It cannot be performed on jobs that have been confirmed by a student or have entered the production queue.
 - **Confirmation Required**: Because this action is irreversible, it **must** be protected by a confirmation modal in the frontend. The modal will clearly state that the job and all its associated files will be permanently deleted.
 - **Workflow**:
-    1.  A staff member clicks a "Delete" button on an eligible job.
+    1.  A staff member clicks a "Delete" button on an eligible job, which acquires a lock on the job.
     2.  The confirmation modal appears. Upon confirmation, the frontend sends a `DELETE /api/v1/jobs/<job_id>` request.
-    3.  The backend API validates that the job is in a deletable status.
+    3.  The backend API validates that the job is in a deletable status and that the requesting user holds the lock.
     4.  The API executes the deletion as a transaction: it permanently deletes the job's files from the network storage, then deletes the job's record and all associated event logs from the database.
 - **Auditing**: All delete actions will be logged to a separate, secure, system-level audit log, recording the job ID, student details, and the staff member who performed the deletion.
 
@@ -1046,19 +1076,21 @@ To provide staff with an efficient way to remove erroneous, unwanted, or duplica
 All endpoints will be prefixed with `/api/v1`. All responses will be in JSON format. Timestamps are in UTC ISO 8601 format.
 
 ---
-**Authentication (Clerk Integration)**
+**Authentication**
 
-*Note: Authentication is handled entirely by Clerk. The Flask backend validates Clerk-issued JWTs.*
+*Note: Authentication is handled by a simple, custom-built workstation login system.*
 
-*   **JWT Validation Middleware**: All protected endpoints validate Clerk JWTs in the `Authorization: Bearer <token>` header
-*   **User Context**: Clerk user ID and profile information extracted from validated JWTs
-*   **No Custom Login Endpoint**: Authentication handled by Clerk's hosted UI and SDK
-*   **Automatic Token Refresh**: Clerk SDK handles token refresh automatically on the frontend
-*   **Session Management**: Clerk manages all session lifecycle, logout, and security features
+*   `POST /auth/login`
+    *   **Description**: Authenticates a workstation.
+    *   **Body**: `{ "workstation_id": "front-desk", "password": "shared-password" }`
+    *   **Success (200)**: `{ "token": "workstation-jwt" }`
+    *   **Error (401)**: `{ "message": "Invalid workstation ID or password" }`
+
+*   **JWT Validation Middleware**: All protected endpoints validate the workstation JWT in the `Authorization: Bearer <token>` header. The middleware makes the `workstation_id` available to the request context.
 
 **Authentication Headers for Protected Endpoints:**
-*   `Authorization: Bearer <clerk_jwt_token>`
-*   **Success**: Request proceeds with user context available
+*   `Authorization: Bearer <workstation_jwt>`
+*   **Success**: Request proceeds with workstation context available
 *   **Error (401)**: `{ "message": "Invalid or expired token" }`
 *   **Error (403)**: `{ "message": "Insufficient permissions" }`
 
@@ -1090,103 +1122,137 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
     *   **Query Params**: `?job_id=abc123`
     *   **Success (200)**: Returns job details and instructions for expired confirmation
 
+*   `POST /submit/resend-confirmation`
+    *   **Description**: Allows a student to request a new confirmation email for an unconfirmed job. This is a public but rate-limited endpoint.
+    *   **Body**: `{ "job_id": "..." }`
+    *   **Success (200)**: `{ "message": "A new confirmation email has been sent." }`
+    *   **Error (404)**: If job ID is not found or job is already confirmed/rejected.
+    *   **Error (429)**: `{ "message": "You can request a new email in X minutes." }`
+
 ---
 **Staff Dashboard**
 
 *   `GET /jobs`
     *   **Query Params**: `?status=UPLOADED&search=student_name&printer=prusa_mk4s&discipline=Engineering&confirmation_expired=true` (all optional)
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
     *   **Success (200)**: `{ "jobs": [job_object_1, job_object_2, ...], "total": 25, "filtered": 10 }`
 
 *   `GET /jobs/<job_id>`
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
     *   **Success (200)**: Returns the full `job_object`, including its event history.
 
 *   `DELETE /jobs/<job_id>`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Description**: Permanently deletes a job and its associated files. This action is irreversible and only permitted for jobs in 'UPLOADED' or 'PENDING' status.
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Permanently deletes a job and its associated files. This action is irreversible and only permitted for jobs in 'UPLOADED' or 'PENDING' status. The requesting user must hold the lock. The lock is automatically released upon completion of the request, whether it succeeds or fails.
     *   **Success (204 No Content)**: The job was successfully deleted.
-    *   **Error (403 Forbidden)**: If the user tries to delete a job that is not in a deletable status.
+    *   **Error (403 Forbidden)**: If the user tries to delete a job that is not in a deletable status, or if the user does not hold the lock.
     *   **Error (404 Not Found)**: If the job doesn't exist.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+
+*   `GET /jobs/<job_id>/candidate-files`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Scans the job's current directory and returns a list of potential authoritative files for the approval modal.
+    *   **Success (200)**: `{ "files": ["original_file.stl", "sliced_version.3mf", "another_save.3mf"] }`
+
+*   `POST /jobs/<job_id>/lock`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Acquires an exclusive lock on a job to prevent concurrent edits.
+    *   **Success (200)**: `{ "message": "Job locked successfully", "locked_until": "timestamp" }`
+    *   **Error (409 Conflict)**: `{ "message": "Job is currently locked by another user.", "locked_by": "Jane Doe", "locked_until": "timestamp" }`
+
+*   `POST /jobs/<job_id>/unlock`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Releases an exclusive lock on a job.
+    *   **Success (200)**: `{ "message": "Job unlocked successfully." }`
+
+*   `POST /jobs/<job_id>/lock/extend`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Extends the duration of an existing lock (heartbeat).
+    *   **Success (200)**: `{ "message": "Lock extended successfully", "locked_until": "timestamp" }`
+    *   **Error (403 Forbidden)**: If the user does not hold the lock.
 
 *   `POST /jobs/<job_id>/approve`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Body**: `{ "weight_g": 25.5, "time_hours": 3.5, "material": "Filament", "printer": "prusa_mk4s" }`
-    *   **Success (200)**: Returns the updated job object. Logs approval with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Approves a job. The lock is automatically released upon completion.
+    *   **Body**: `{ "weight_g": 25.5, "time_hours": 3.5, ..., "staff_name": "Jane Doe" }`
+    *   **Success (200)**: Returns updated job. Logs approval with `staff_name` and `workstation_id`.
 
 *   `POST /jobs/<job_id>/reject`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Body**: `{ "reasons": ["Model is not manifold", "Other"], "custom_reason": "The model is too thin to print." }`
-    *   **Success (200)**: Returns the updated job object. Logs rejection with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Rejects a job. The lock is automatically released upon completion.
+    *   **Body**: `{ "reasons": [...], "custom_reason": "...", "staff_name": "Jane Doe" }`
+    *   **Success (200)**: Returns updated job. Logs rejection with `staff_name` and `workstation_id`.
 
 *   `POST /jobs/<job_id>/mark-printing`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Success (200)**: Returns the updated job object. Logs status change with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Marks a job as printing. The lock is automatically released upon completion.
+    *   **Body**: `{ "staff_name": "Jane Doe" }`
+    *   **Success (200)**: Returns updated job. Logs status change with `staff_name` and `workstation_id`.
 
 *   `POST /jobs/<job_id>/mark-complete`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Success (200)**: Returns the updated job object. Logs completion with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Marks a job as complete. The lock is automatically released upon completion.
+    *   **Body**: `{ "staff_name": "Jane Doe" }`
+    *   **Success (200)**: Returns updated job. Logs completion with `staff_name` and `workstation_id`.
 
 *   `POST /jobs/<job_id>/mark-picked-up`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Success (200)**: Returns the updated job object. Logs pickup with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Marks a job as picked up. The lock is automatically released upon completion.
+    *   **Body**: `{ "staff_name": "Jane Doe" }`
+    *   **Success (200)**: Returns updated job. Logs pickup with `staff_name` and `workstation_id`.
 
 *   `POST /jobs/<job_id>/review`
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Marks a job as reviewed (or un-reviewed). The lock is automatically released upon completion.
     *   **Body**: `{ "reviewed": true }` (or `false` to mark as unreviewed)
-    *   **Success (200)**: Returns the updated job object. Updates `staff_viewed_at` with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Success (200)**: Returns updated job. Updates `staff_viewed_at` with `staff_name` and `workstation_id`.
 
 *   `PATCH /jobs/<job_id>/notes`
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Updates the notes for a job. The lock is automatically released upon completion.
     *   **Body**: `{ "notes": "Staff notes go here." }`
-    *   **Success (200)**: Returns the updated job object. Logs notes update with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Success (200)**: Returns updated job. Logs notes update with `staff_name` and `workstation_id`.
 
 *   `POST /jobs/<job_id>/revert-completion`
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
     *   **Description**: Reverts a job from `COMPLETED` back to `PRINTING`.
-    *   **Success (200)**: Returns the updated job object. Logs `StatusReverted` event.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Success (200)**: Returns updated job. Logs `StatusReverted` event.
 
 *   `POST /jobs/<job_id>/revert-pickup`
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
     *   **Description**: Reverts a job from `PAIDPICKEDUP` back to `COMPLETED`.
-    *   **Success (200)**: Returns the updated job object. Logs `StatusReverted` event.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Success (200)**: Returns updated job. Logs `StatusReverted` event.
 
 ---
 **Admin Override Endpoints**
 
+*   `POST /jobs/<job_id>/admin/force-unlock`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Forcibly releases a lock on a job.
+    *   **Body**: `{ "reason": "User browser crashed, releasing stuck lock.", "staff_name": "Admin User" }`
+    *   **Success (200)**: `{ "message": "Lock has been forcibly released." }`. Logs an `AdminAction` event.
+
 *   `POST /jobs/<job_id>/admin/force-confirm`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Body**: `{ "reason": "Student confirmed verbally", "bypass_email": true }`
-    *   **Success (200)**: Returns the updated job object. Logs admin override event with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Body**: `{ "reason": "Student confirmed verbally", "bypass_email": true, "staff_name": "Admin User" }`
+    *   **Success (200)**: Returns the updated job object. Logs admin override event with staff attribution.
 
 *   `POST /jobs/<job_id>/admin/change-status`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Body**: `{ "new_status": "READYTOPRINT", "reason": "Debugging workflow issue" }`
-    *   **Success (200)**: Returns the updated job object. Logs admin override event with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Body**: `{ "new_status": "READYTOPRINT", "reason": "Debugging workflow issue", "staff_name": "Admin User" }`
+    *   **Success (200)**: Returns the updated job object. Logs admin override event with staff attribution.
 
 *   `POST /jobs/<job_id>/admin/mark-failed`
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
     *   **Description**: Marks a job in the `PRINTING` status as failed due to lab error and returns it to the `READYTOPRINT` queue.
-    *   **Body**: `{ "reason": "Filament tangle detected on printer." }`
+    *   **Body**: `{ "reason": "Filament tangle detected on printer.", "staff_name": "Jane Doe" }`
     *   **Success (200)**: Returns the updated job object. Logs a `PrintFailed` event with the provided reason and an `AdminAction` event.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 *   `POST /jobs/<job_id>/admin/resend-email`
-    *   **Auth**: Required (Clerk JWT)
-    *   **Body**: `{ "email_type": "approval" }` (options: "approval", "rejection", "completion")
-    *   **Success (200)**: `{ "message": "Email resent successfully", "new_token": "abc123" }`. Logs email resend with Clerk user attribution.
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Allows staff to resend a notification email. This action is rate-limited.
+    *   **Body**: `{ "email_type": "approval", "staff_name": "Jane Doe" }` (options: "approval", "rejection", "completion")
+    *   **Success (200)**: `{ "message": "Email resent successfully", "new_token": "abc123" }`. Logs email resend with staff attribution.
+    *   **Error (429)**: `{ "message": "An email was sent recently. Please wait before resending." }`
     *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 ---
@@ -1194,18 +1260,18 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
 
 *   `POST /admin/audit/start`
     *   **Description**: Triggers a new system health and integrity scan. This will be an asynchronous task.
-    *   **Auth**: Required (Clerk JWT, Admin role)
+    *   **Auth**: Required (Workstation JWT)
     *   **Success (202)**: `{ "message": "System audit started successfully.", "task_id": "some-async-task-id" }`. Logs the `AdminAction` event.
 
 *   `GET /admin/audit/report`
     *   **Description**: Retrieves the report from the last completed system health scan.
-    *   **Auth**: Required (Clerk JWT, Admin role)
+    *   **Auth**: Required (Workstation JWT)
     *   **Success (200)**: `{ "report_generated_at": "timestamp", "orphaned_files": ["path/to/orphan1.stl"], "broken_links": [{"job_id": "abc", "missing_path": "path/to/missing.stl"}] }`.
 
 *   `DELETE /admin/audit/orphaned-file`
     *   **Description**: Deletes a specific orphaned file from the storage. This action is logged.
-    *   **Auth**: Required (Clerk JWT, Admin role)
-    *   **Body**: `{ "file_path": "path/to/orphan1.stl" }`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Body**: `{ "file_path": "path/to/orphan1.stl", "staff_name": "Admin User" }`
     *   **Success (200)**: `{ "message": "Orphaned file deleted successfully." }`. Logs the `FileDeleted` event with admin attribution.
 
 ---
@@ -1213,25 +1279,25 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
 
 *   `POST /admin/archive`
     *   **Description**: Triggers the archival of all jobs in a final state (`PaidPickedUp`, `Rejected`) that are older than the specified retention period.
-    *   **Auth**: Required (Clerk JWT, Admin role)
-    *   **Body**: `{ "retention_days": 90 }` (Optional, defaults to 90)
+    *   **Auth**: Required (Workstation JWT)
+    *   **Body**: `{ "retention_days": 90, "staff_name": "Admin User" }` (Optional, defaults to 90)
     *   **Success (200)**: `{ "message": "Archival process completed", "jobs_archived": 12 }`. Logs a single `AdminAction` event for the batch operation, and individual `JobArchived` events for each job.
 
 *   `POST /admin/prune`
     *   **Description**: Permanently deletes all jobs in the `ARCHIVED` state that are older than the specified retention period. This is a destructive action.
-    *   **Auth**: Required (Clerk JWT, Admin role)
-    *   **Body**: `{ "retention_days": 365 }` (Optional, defaults to 365)
+    *   **Auth**: Required (Workstation JWT)
+    *   **Body**: `{ "retention_days": 365, "staff_name": "Admin User" }` (Optional, defaults to 365)
     *   **Success (200)**: `{ "message": "Pruning process completed", "jobs_deleted": 5 }`. Logs an `AdminAction` event and individual `JobDeleted` events for each job that is pruned.
 
 ---
 **Dashboard Stats & Analytics**
 
 *   `GET /stats`
-    *   **Auth**: Required (Clerk JWT)
+    *   **Auth**: Required (Workstation JWT)
     *   **Success (200)**: `{ "uploaded": 10, "pending": 5, "readyToPrint": 3, "storage_usage_mb": 1024, "storage_limit_mb": 10240 }`
 
 *   `GET /stats/detailed`
-    *   **Auth**: Required (Clerk JWT) 
+    *   **Auth**: Required (Workstation JWT) 
     *   **Query Params**: `?days=30&printer=all&discipline=all` (optional)
     *   **Success (200)**: Detailed analytics including submission trends, printer utilization, common rejection reasons, and staff activity metrics
 
