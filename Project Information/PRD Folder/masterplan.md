@@ -1,7 +1,7 @@
 # 3D Print System Project Plan (Beginner-Friendly Flask API + Next.js Edition)
 
 ## 1. Project Overview
-This project will build a Flask-based 3D print job management system **from scratch**, specifically designed for beginners. The system is tailored for an academic/makerspace setting with up to two staff members operating concurrently on separate computers. It uses individual staff accounts and is designed with safeguards to prevent data conflicts and race conditions inherent in a multi-user environment. The system will handle the workflow from student submission to completion, with file tracking, staff approval, and the ability to open the exact uploaded files directly in local applications.
+This project will build a Flask-based 3D print job management system **from scratch**, specifically designed for beginners. The system is tailored for an academic/makerspace setting with up to two staff members operating concurrently on separate computers. It uses a **workstation-based login system with per-action staff attribution** and is designed with safeguards to prevent data conflicts and race conditions inherent in a multi-user environment. The system will handle the workflow from student submission to completion, with file tracking, staff approval, and the ability to open the exact uploaded files directly in local applications.
 
 > **Key Design Principle**: This project prioritizes **beginner-friendly implementation** with clear, step-by-step guidance and minimal complexity. We start with a basic working system and iterate to add features.
 
@@ -37,7 +37,7 @@ The system will cater primarily to two user roles:
     *   **Debug panel**: Development interface showing current state, sound settings, and system health
     *   **Last updated indicator**: Timestamp showing when dashboard data was last refreshed
 9.  **Multi-computer support**: System can run on up to two staff computers, as long as both use the same shared storage and database.
-10. **Event Logging**: **Immutable event log** tracking all changes with full audit trail tied to individual staff accounts.
+10. **Event Logging**: **Immutable event log** tracking all changes with full audit trail tied to the **attributed staff member**.
 11. **Thumbnails**: **Asynchronously** generate previews from uploaded files. If thumbnail generation fails, no thumbnail will be displayed, or a generic placeholder may be shown.
 
 ### 2.2 Technical Requirements (Beginner-Focused)
@@ -423,7 +423,7 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 **Standardized File Naming**: `FirstAndLastName_PrintMethod_Color_SimpleJobID.original_extension`
 
-**Event-Driven Architecture**: Every action generates immutable event logs with Clerk user attribution for complete audit trails.
+**Event-Driven Architecture**: Every action generates immutable event logs with staff member attribution for complete audit trails.
 
 #### 3.4.2 Workflow Status Progression
 
@@ -437,9 +437,10 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
   * Database updates: `file_path`, `original_filename`, `display_name`, `metadata_path`
   * Thumbnail generation (asynchronous, failure-tolerant)
 * **System Actions:** 
-  * Event logging with system attribution
-  * Student success page display
-  * Job immediately visible in staff dashboard
+  * Staff member attribution for the approval action is logged.
+  * Print parameters (weight, time, cost) submitted by the staff are validated.
+  * A secure confirmation token is generated for the student.
+  * An approval email, containing the job details and confirmation link, is queued for sending.
 
 **Student Submission UI/UX (Corresponds to 'Uploaded' Status)**
     **Page Flow**:
@@ -488,7 +489,7 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
   * The explicitly chosen authoritative file and its `metadata.json` are moved from `storage/Uploaded/` → `storage/Pending/`. If the chosen file was not the original, the original student upload is also moved to `storage/Pending/` for archival purposes but is no longer considered the authoritative version.
   * The database is updated with the new `file_path`, `display_name`, and `metadata_path`.
 * **System Actions:**
-  * Clerk user attribution for the approval action is logged.
+  * Staff member attribution for the approval action is logged.
   * Print parameters (weight, time, cost) submitted by the staff are validated.
   * A secure confirmation token is generated for the student.
   * An approval email, containing the job details and confirmation link, is queued for sending.
@@ -738,14 +739,14 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 **Backend Components:**
 - **Flask API Application**: RESTful API with Blueprint organization, PostgreSQL database integration, and comprehensive job/event models
-- **Clerk Authentication Integration**: JWT validation middleware, user context management, and secure API endpoint protection
+- **Workstation Authentication**: JWT-based authentication for workstations with per-action staff attribution.
 - **File Management Services**: Robust file handling, cost calculation algorithms, and resilient `metadata.json` generation
 - **Asynchronous Task Processing**: RQ integration for email delivery and thumbnail generation
 - **Custom Protocol Handler**: `SlicerOpener.py` application with security validation and slicer integration
 
 **Frontend Components:**
 - **Next.js Application**: Modern App Router architecture with TypeScript, Tailwind CSS, and comprehensive shadcn/ui component library
-- **Authentication Flow**: Seamless Clerk integration with automatic session management and protected route handling  
+- **Authentication Flow**: Simple login form for workstations, JWT storage in browser, and inclusion in subsequent API requests.
 - **Dashboard Interface**: Real-time updating dashboard with sound notifications, visual alerts, job age tracking, and advanced filtering
 - **Interactive Workflows**: Sophisticated approval/rejection modals, inline notes editing, and comprehensive form validation
 - **Student Submission Interface**: Dynamic form with contextual validation, progressive disclosure, and educational content
@@ -759,18 +760,18 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 ### 5.2 Security Architecture & Considerations
 
-#### 5.2.1 Authentication Security (Clerk Integration)
-- **Enterprise-Grade Authentication**: Clerk provides industry-standard OAuth, JWT validation, and session management
-- **Individual Staff Accountability**: Each staff member has unique credentials with full audit trail capability
-- **Multi-Factor Authentication**: Optional MFA support for enhanced security based on institutional requirements
-- **Session Management**: Automatic token refresh, secure cookie handling, and proper session lifecycle management
-- **No Shared Credentials**: Eliminates security risks associated with shared passwords or single-point authentication failures
+#### 5.2.1 Authentication Security (Workstation & Attribution Model)
+- **Shared Workstation Credentials**: Each physical computer terminal has its own shared password, simplifying access in a busy lab environment. This avoids the need for staff to remember individual passwords.
+- **Mandatory Staff Attribution**: The primary security control is mandatory, per-action attribution. Every state-changing operation requires the staff member to select their name from a dropdown, ensuring all actions are logged and traceable to a specific person.
+- **Traceability**: The combination of `workstation_id` and the attributed `staff_name` provides a clear audit trail for every critical action, mitigating the risks of shared credentials.
+- **Session Management**: Secure, short-lived JWTs are used for workstation sessions, with secure cookie handling and proper lifecycle management.
+- **Staff List Management**: Removing a staff member from the centrally managed list immediately prevents them from being attributed to any new actions, effectively revoking their ability to make changes in the system.
 
 #### 5.2.2 Application Security
 - **Secure File Upload Handling**: Comprehensive validation including file type verification, size limits, and content scanning
 - **Student Confirmation Security**: Time-limited, cryptographically signed tokens using itsdangerous library with proper expiration handling
 - **Path Traversal Prevention**: Strict validation of all file paths with absolute path resolution and base directory containment checks
-- **API Endpoint Protection**: All state-changing requests require valid Clerk JWT authentication with proper role validation
+- **API Endpoint Protection**: All state-changing requests require a valid workstation JWT for authentication.
 - **Content Security Policy**: Comprehensive CSP headers to prevent XSS and other injection attacks
 
 #### 5.2.3 System-Level Security
