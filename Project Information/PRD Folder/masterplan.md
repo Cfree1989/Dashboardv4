@@ -45,7 +45,7 @@ The system will cater primarily to two user roles:
 #### 2.2.1 Backend (Flask API-Only)
 -   **Framework**: Flask (Python) with **API-only endpoints** - no HTML templates or server-side rendering
 -   **Database**: PostgreSQL via SQLAlchemy ORM
--   **Task Queue**: Celery or RQ for background jobs (emails, thumbnail generation, and a recurring job to check for expired confirmation tokens).
+-   **Task Queue**: RQ for background jobs (emails, thumbnail generation, and a recurring job to check for expired confirmation tokens).
 -   **Email**: Flask-Mail with Office 365 SMTP
 -   **Sibling File Detection**: A configurable list of slicer file extensions (e.g.,`.3mf`, `.form`, `.idea`) will be used to automatically detect when a staff member has saved a new authoritative file.
 -   **File Storage**: Network-mounted folders with standardized structure:
@@ -98,7 +98,6 @@ The system will cater primarily to two user roles:
 -   **User Information**: Staff actions logged with individual user identification for accountability
 
 #### 2.2.4 Key Constraints & Principles
-- **No Docker**: Simple native installation and deployment
 - **No Next.js API Routes**: All server logic handled by Flask backend
 - **Beginner-Friendly**: Clear explanations and step-by-step setup
 - **API-First Design**: Frontend consumes RESTful Flask API endpoints
@@ -108,7 +107,7 @@ The system will cater primarily to two user roles:
     -   Cross-Origin Resource Sharing (CORS) will be enabled on the Flask API to allow requests from the Next.js frontend.
     -   The API will be stateless and RESTful.
     -   Native **fetch API** for HTTP requests with error handling and retry logic.
--   **Task Queue**: Celery or RQ for **asynchronous processing** (emails, thumbnails).
+-   **Task Queue**: RQ for **asynchronous processing** (emails, thumbnails).
 -   **API Security & Rate Limiting**:
     -   **Flask-Limiter** integration for abuse protection:
         -   `/api/submit`: 3 submissions per IP per hour
@@ -123,7 +122,7 @@ The system will cater primarily to two user roles:
 -   **Pricing Model**: Weight-only pricing ($0.10/gram filament, $0.20/gram resin) with $3.00 minimum charge.
 -   **Time Input**: Hour-based time inputs with conservative rounding (always round UP to nearest 0.5 hours).
 -   **Critical Dependencies**:
-    -   **Backend**: `Flask`, `Flask-SQLAlchemy`, `Flask-Migrate`, `Flask-CORS`, `Flask-Limiter`, `psycopg2-binary`, `python-dotenv`, `PyJWT`, `Celery`/`RQ`.
+    -   **Backend**: `Flask`, `Flask-SQLAlchemy`, `Flask-Migrate`, `Flask-CORS`, `Flask-Limiter`, `psycopg2-binary`, `python-dotenv`, `PyJWT`, `rq`.
     -   **Frontend**: `next`, `react`, `react-dom`, `typescript`, `tailwindcss`, `@radix-ui/*`, `lucide-react`, `date-fns`, `class-variance-authority`, `clsx`, `tailwind-merge`.
 
 ### 2.3 Beginner-Friendly Architecture Principles
@@ -331,6 +330,7 @@ class Job(db.Model):
    confirm_token = db.Column(db.String(128), nullable=True, unique=True)
    confirm_token_expires = db.Column(db.DateTime, nullable=True)
    is_confirmation_expired = db.Column(db.Boolean, default=False, nullable=False)
+   confirmation_last_sent_at = db.Column(db.DateTime, nullable=True)
    
    # Staff Management
    reject_reasons = db.Column(db.JSON, nullable=True)
@@ -559,10 +559,16 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 - **Resend Email Controls**: Generate new confirmation tokens when original links expire
 
 **Fallback/Manual Processes for Pending Status:**
-- If a student doesn't confirm within the token expiry period, staff are alerted (e.g., via dashboard).
-- Staff can manually resend a confirmation email (generating a new token).
+- If a student doesn't confirm within the token expiry period (e.g., 72 hours), the job is visually flagged on the staff dashboard (e.g., with a yellow warning icon) so staff can take proactive measures.
+- Staff can manually resend a confirmation email (generating a new token), which is a rate-limited action.
 - Staff can manually mark a job as confirmed if email confirmation fails (e.g., student confirms verbally). This action is logged.
-- **Expired Token Handling**: Clear UX flow for expired confirmation links with recovery options
+- Students have a self-service option on the "expired link" page to request a new, rate-limited confirmation email.
+
+**Expired Token and Resend Workflow (Student-Facing)**
+- **Expired Link Handling**: When a student clicks an invalid or expired confirmation link, they are directed to a user-friendly frontend page (`/confirm/expired?job_id=...`).
+- **Clear Messaging**: This page will clearly state that the link has expired and explain the next steps.
+- **Self-Service Resend**: The page will feature a "Resend Confirmation Email" button. Clicking this triggers a new, public, but rate-limited API endpoint to send a fresh email with a new token.
+- **Throttling**: To prevent abuse, this self-service resend option is limited (e.g., once per hour per job). The UI should reflect this, disabling the button and showing a countdown if a recent request has been made.
 
 **UI/UX Implementation Notes:**
 - All status changes must provide immediate visual feedback
@@ -728,7 +734,7 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 - **Flask API Application**: RESTful API with Blueprint organization, PostgreSQL database integration, and comprehensive job/event models
 - **Clerk Authentication Integration**: JWT validation middleware, user context management, and secure API endpoint protection
 - **File Management Services**: Robust file handling, cost calculation algorithms, and resilient `metadata.json` generation
-- **Asynchronous Task Processing**: Celery/RQ integration for email delivery and thumbnail generation
+- **Asynchronous Task Processing**: RQ integration for email delivery and thumbnail generation
 - **Custom Protocol Handler**: `SlicerOpener.py` application with security validation and slicer integration
 
 **Frontend Components:**
@@ -779,7 +785,7 @@ The entire application stack is designed to be deployed using Docker and Docker 
     *   `backend`: The Flask API application, served by Gunicorn.
     *   `frontend`: The Next.js application. For production, this container will run `npm start` to serve the application with server-side rendering.
     *   `db`: A PostgreSQL database service, with its data persisted in a Docker volume to prevent data loss on container restart.
-    *   `worker`: The Celery/RQ background worker for handling asynchronous tasks.
+    *   `worker`: The RQ background worker for handling asynchronous tasks.
     *   `redis`: The message broker (Redis) for the background worker queue.
 
 2.  **Deployment Process**:
@@ -803,6 +809,7 @@ The entire application stack is designed to be deployed using Docker and Docker 
 - Admin Rights: Registering protocol handlers or installing software might require admin rights. The helper app can be deployed to user-space if packaged correctly.
 - Storage Quotas: Be mindful of file sizes and implement cleanup if quotas are restrictive.
 - Alternative File Access: If custom protocol is unfeasible, a fallback could be instructing staff to copy a displayed network path, or a less ideal "download and open".
+- **Email Deliverability**: To minimize the risk of emails being marked as spam, the outgoing mail server must be correctly configured with SPF and DKIM records. This should be coordinated with university IT.
 
 ### 5.5 Cost Matrix & Calculation
 - Filament Print Cost: $0.10 per gram.
@@ -856,16 +863,17 @@ This plan outlines the steps to restore the system to a functional state from a 
 - To ensure backups are viable, lab staff are responsible for performing a test restore to a non-production environment on a quarterly basis. This validates both the integrity of the backups and the accuracy of the recovery plan.
 
 ### 5.9 System Health and Integrity Auditing
-To ensure long-term data resilience, the system will include an admin-triggered integrity audit tool to identify and resolve discrepancies between the database and the file storage. This process is crucial for preventing orphaned files and broken database links.
+To ensure long-term data resilience, the system will include an admin-triggered integrity audit tool to identify and resolve discrepancies between the database and the file storage. This process is crucial for preventing orphaned files and broken database links, and serves as the recovery mechanism for incomplete file transactions.
 
-- **Two-Way Integrity Scan**: The tool will perform a comprehensive scan:
+- **Three-Way Integrity Scan**: The tool will perform a comprehensive scan:
     1.  **Filesystem to Database (Orphaned Files)**: It scans all `storage/` directories and verifies that each job file has a corresponding, active entry in the database. Files without a database entry are flagged as "Orphaned."
     2.  **Database to Filesystem (Broken Links)**: It iterates through all job records in the database and confirms that the `file_path` and `metadata_path` point to existing files on the disk. Entries with missing files are flagged as having a "Broken Link."
+    3.  **Database to Filesystem (Stale Files)**: It checks for files that share a job ID with a database record but are located in a directory that does *not* match the status recorded in the database. This specifically identifies remnants of incomplete "copy-then-delete" operations, flagging them as "Stale" and safe for deletion.
 
 - **Admin-Driven Resolution**: The audit tool will **not** automatically delete or modify any data. Instead, it will:
-    -   Generate a detailed report listing all identified orphans and broken links.
+    -   Generate a detailed report listing all identified orphans, broken links, and stale files.
     -   Present this report to the administrator in a dedicated "System Health" section of the dashboard.
-    -   Provide the administrator with the tools to safely resolve issues (e.g., a button to delete selected orphaned files or to flag a job with a broken link for manual review). All resolution actions will be logged in the `Event` table.
+    -   Provide the administrator with the tools to safely resolve issues (e.g., a button to delete selected orphaned or stale files, or to flag a job with a broken link for manual review). All resolution actions will be logged in the `Event` table.
 
 ### 5.10 Professional UI Design Patterns (PROVEN SUCCESSFUL)
 - Card-style dashboard interface, anti-redundancy principles, time display and management, display name formatting system, template filters, and all other proven UI/UX patterns as detailed in section 6.
@@ -987,21 +995,27 @@ To ensure high availability and prevent silent failures of critical backend comp
 - **Component Status Checks**: The health check will verify the status of all critical infrastructure components:
     1.  **API Service**: The endpoint responding with a `200 OK` status confirms the Flask API is running.
     2.  **Database Connectivity**: The endpoint will attempt a simple, non-locking query (e.g., `SELECT 1`) to confirm the database is reachable and responsive.
-    3.  **Background Worker Connectivity**: The endpoint will check the connection to the message broker (e.g., Redis) used by Celery/RQ to ensure background tasks can be queued and processed.
+    3.  **Background Worker Connectivity**: The endpoint will check the connection to the message broker (e.g., Redis) used by RQ to ensure background tasks can be queued and processed.
 - **Alerting**: If the health check endpoint fails to respond or reports a failure in any component, an external monitoring service is expected to automatically trigger alerts (e.g., email, SMS) to designated system administrators (lab staff), enabling rapid response to outages.
 
 ### 5.17 Concurrency Control and Data Integrity
 To ensure data consistency and prevent race conditions in a multi-user, multi-computer environment, the system will implement the following safeguards:
 
-- **API-Level Job Locking**: To prevent two staff members from simultaneously performing conflicting state-changing actions on the same job, the system will use an API-level locking mechanism.
-    - When a user initiates a critical action (e.g., opening an approval modal), the backend API will temporarily lock the job record in the database (e.g., setting a `locked_by_user` field and a `locked_until` timestamp).
-    - If another user attempts a conflicting action on the locked job, the API will respond with a `409 Conflict` error, informing the second user that the job is currently being edited.
-    - Locks will have a short, automatic expiration (e.g., 5 minutes) to prevent jobs from becoming permanently stuck.
-    - The frontend must handle the `409 Conflict` response gracefully by displaying a notification and refreshing the job data.
+- **API-Level Job Locking**: To prevent two staff members from simultaneously performing conflicting state-changing actions on the same job, the system will use a robust, stateful, API-level locking mechanism.
+    - **Acquiring a Lock**: Before initiating a critical action (e.g., opening an approval modal), the frontend will first request a lock from the backend. The API will set a `locked_by_user` field and a `locked_until` timestamp (e.g., 5 minutes in the future) on the job.
+    - **Lock Heartbeat**: While a user has a job locked for an extended UI interaction (like an open modal), the frontend will automatically send a periodic "heartbeat" request to extend the lock's duration. This prevents the lock from expiring during legitimate use.
+    - **Releasing a Lock**: When the user completes or cancels the action, the frontend will explicitly release the lock. Critical state-changing API endpoints will also automatically release the lock upon successful completion.
+    - **Handling Conflicts & UI Feedback**: If a user attempts to lock an already-locked job, the API will return a `409 Conflict` error, including who holds the lock. The UI must handle this gracefully by displaying a notification (e.g., "This job is being edited by Jane Doe") and disabling editing controls.
+    - **Surfacing Lock Status**: The `GET /jobs` and `GET /jobs/<job_id>` endpoints will include the current lock status in their responses, allowing the UI to proactively show if a job is locked.
+    - **Automatic Expiration & Admin Override**: The automatic expiration serves as a fallback for abandoned sessions. For truly "stuck" locks, an administrator will have a dedicated API endpoint to forcibly release them, with the action being fully audited.
 
-- **Transactional File Operations**: All workflows that involve both database updates and file system modifications (e.g., approving a job, changing its status) **must** be executed within a database transaction.
-    - The process will be: 1) start transaction, 2) perform all database writes, 3) perform file system move/copy, 4) commit transaction if file operation succeeds, or 5) rollback transaction if file operation fails.
-    - This ensures that the system's state remains consistent and prevents scenarios where a file is moved but the corresponding database update fails, or vice-versa.
+- **Transactional File Operations**: All workflows that involve both database updates and file system modifications (e.g., approving a job) must be designed for resilience against unexpected failures (e.g., a server crash). The strategy is to ensure the database remains the "source of truth" and that inconsistencies can be detected and corrected.
+    - **Resilient Workflow ("Copy, Update, then Delete")**: Instead of a simple "move" operation, the sequence will be:
+        1.  **Copy**: The authoritative file is first *copied* to the destination directory (e.g., from `/Uploaded` to `/Pending`).
+        2.  **Update Database**: Within a database transaction, the job's status and file path are updated to reflect the new location.
+        3.  **Commit**: The database transaction is committed. At this point, the system's "source of truth" now correctly points to the new file.
+        4.  **Delete Original**: The original file in the source directory is deleted.
+    - **Recovery Path**: If a crash occurs between steps 3 and 4, the system is left in a consistent state from the database's perspective, but a stale, duplicate file now exists in the old directory. This is not an error that affects live operations but is a cleanup task. The **System Health and Integrity Audit** is designed to detect and resolve exactly this scenario by identifying files that exist in storage but do not match the authoritative path in the database.
 
 ### 5.18 Staff-Level Error Correction
 To handle common human errors gracefully without requiring administrator intervention, the system will provide a "revert" capability for certain status changes. This empowers staff to correct their own mistakes quickly and cleanly.
@@ -1090,6 +1104,13 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
     *   **Query Params**: `?job_id=abc123`
     *   **Success (200)**: Returns job details and instructions for expired confirmation
 
+*   `POST /submit/resend-confirmation`
+    *   **Description**: Allows a student to request a new confirmation email for an unconfirmed job. This is a public but rate-limited endpoint.
+    *   **Body**: `{ "job_id": "..." }`
+    *   **Success (200)**: `{ "message": "A new confirmation email has been sent." }`
+    *   **Error (404)**: If job ID is not found or job is already confirmed/rejected.
+    *   **Error (429)**: `{ "message": "You can request a new email in X minutes." }`
+
 ---
 **Staff Dashboard**
 
@@ -1104,89 +1125,113 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
 
 *   `DELETE /jobs/<job_id>`
     *   **Auth**: Required (Clerk JWT)
-    *   **Description**: Permanently deletes a job and its associated files. This action is irreversible and only permitted for jobs in 'UPLOADED' or 'PENDING' status.
+    *   **Description**: Permanently deletes a job and its associated files. This action is irreversible and only permitted for jobs in 'UPLOADED' or 'PENDING' status. The requesting user must hold the lock on the job.
     *   **Success (204 No Content)**: The job was successfully deleted.
-    *   **Error (403 Forbidden)**: If the user tries to delete a job that is not in a deletable status.
+    *   **Error (403 Forbidden)**: If the user tries to delete a job that is not in a deletable status, or if the user does not hold the lock.
     *   **Error (404 Not Found)**: If the job doesn't exist.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+
+*   `POST /jobs/<job_id>/lock`
+    *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Acquires an exclusive lock on a job to prevent concurrent edits.
+    *   **Success (200)**: `{ "message": "Job locked successfully", "locked_until": "timestamp" }`
+    *   **Error (409 Conflict)**: `{ "message": "Job is currently locked by another user.", "locked_by": "Jane Doe", "locked_until": "timestamp" }`
+
+*   `POST /jobs/<job_id>/unlock`
+    *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Releases an exclusive lock on a job.
+    *   **Success (200)**: `{ "message": "Job unlocked successfully." }`
+
+*   `POST /jobs/<job_id>/lock/extend`
+    *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Extends the duration of an existing lock (heartbeat).
+    *   **Success (200)**: `{ "message": "Lock extended successfully", "locked_until": "timestamp" }`
+    *   **Error (403 Forbidden)**: If the user does not hold the lock.
 
 *   `POST /jobs/<job_id>/approve`
     *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Approves a job. The requesting user must hold the lock. The lock is released upon success.
     *   **Body**: `{ "weight_g": 25.5, "time_hours": 3.5, "material": "Filament", "printer": "prusa_mk4s" }`
     *   **Success (200)**: Returns the updated job object. Logs approval with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Error (403 Forbidden)**: `{ "message": "You do not hold the lock for this job." }`
 
 *   `POST /jobs/<job_id>/reject`
     *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Rejects a job. The requesting user must hold the lock. The lock is released upon success.
     *   **Body**: `{ "reasons": ["Model is not manifold", "Other"], "custom_reason": "The model is too thin to print." }`
     *   **Success (200)**: Returns the updated job object. Logs rejection with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Error (403 Forbidden)**: `{ "message": "You do not hold the lock for this job." }`
 
 *   `POST /jobs/<job_id>/mark-printing`
     *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Marks a job as printing. The requesting user must hold the lock. The lock is released upon success.
     *   **Success (200)**: Returns the updated job object. Logs status change with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Error (403 Forbidden)**: `{ "message": "You do not hold the lock for this job." }`
 
 *   `POST /jobs/<job_id>/mark-complete`
     *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Marks a job as complete. The requesting user must hold the lock. The lock is released upon success.
     *   **Success (200)**: Returns the updated job object. Logs completion with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Error (403 Forbidden)**: `{ "message": "You do not hold the lock for this job." }`
 
 *   `POST /jobs/<job_id>/mark-picked-up`
     *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Marks a job as picked up. The requesting user must hold the lock. The lock is released upon success.
     *   **Success (200)**: Returns the updated job object. Logs pickup with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Error (403 Forbidden)**: `{ "message": "You do not hold the lock for this job." }`
 
 *   `POST /jobs/<job_id>/review`
     *   **Auth**: Required (Clerk JWT)
     *   **Body**: `{ "reviewed": true }` (or `false` to mark as unreviewed)
     *   **Success (200)**: Returns the updated job object. Updates `staff_viewed_at` with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 *   `PATCH /jobs/<job_id>/notes`
     *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Updates the notes for a job. The requesting user must hold the lock.
     *   **Body**: `{ "notes": "Staff notes go here." }`
     *   **Success (200)**: Returns the updated job object. Logs notes update with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
+    *   **Error (403 Forbidden)**: `{ "message": "You do not hold the lock for this job." }`
 
 *   `POST /jobs/<job_id>/revert-completion`
     *   **Auth**: Required (Clerk JWT)
     *   **Description**: Reverts a job from `COMPLETED` back to `PRINTING`.
     *   **Success (200)**: Returns the updated job object. Logs `StatusReverted` event.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 *   `POST /jobs/<job_id>/revert-pickup`
     *   **Auth**: Required (Clerk JWT)
     *   **Description**: Reverts a job from `PAIDPICKEDUP` back to `COMPLETED`.
     *   **Success (200)**: Returns the updated job object. Logs `StatusReverted` event.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 ---
 **Admin Override Endpoints**
+
+*   `POST /jobs/<job_id>/admin/force-unlock`
+    *   **Auth**: Required (Clerk JWT, Admin role)
+    *   **Description**: Forcibly releases a lock on a job.
+    *   **Body**: `{ "reason": "User browser crashed, releasing stuck lock." }`
+    *   **Success (200)**: `{ "message": "Lock has been forcibly released." }`. Logs an `AdminAction` event.
 
 *   `POST /jobs/<job_id>/admin/force-confirm`
     *   **Auth**: Required (Clerk JWT)
     *   **Body**: `{ "reason": "Student confirmed verbally", "bypass_email": true }`
     *   **Success (200)**: Returns the updated job object. Logs admin override event with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 *   `POST /jobs/<job_id>/admin/change-status`
     *   **Auth**: Required (Clerk JWT)
     *   **Body**: `{ "new_status": "READYTOPRINT", "reason": "Debugging workflow issue" }`
     *   **Success (200)**: Returns the updated job object. Logs admin override event with Clerk user attribution.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 *   `POST /jobs/<job_id>/admin/mark-failed`
     *   **Auth**: Required (Clerk JWT)
     *   **Description**: Marks a job in the `PRINTING` status as failed due to lab error and returns it to the `READYTOPRINT` queue.
     *   **Body**: `{ "reason": "Filament tangle detected on printer." }`
     *   **Success (200)**: Returns the updated job object. Logs a `PrintFailed` event with the provided reason and an `AdminAction` event.
-    *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 *   `POST /jobs/<job_id>/admin/resend-email`
     *   **Auth**: Required (Clerk JWT)
+    *   **Description**: Allows staff to resend a notification email. This action is rate-limited.
     *   **Body**: `{ "email_type": "approval" }` (options: "approval", "rejection", "completion")
     *   **Success (200)**: `{ "message": "Email resent successfully", "new_token": "abc123" }`. Logs email resend with Clerk user attribution.
+    *   **Error (429)**: `{ "message": "An email was sent recently. Please wait before resending." }`
     *   **Error (409)**: `{ "message": "Job is currently locked by another user." }`
 
 ---
