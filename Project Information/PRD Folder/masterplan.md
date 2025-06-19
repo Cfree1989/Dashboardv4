@@ -1076,15 +1076,17 @@ To provide staff with an efficient way to remove erroneous, unwanted, or duplica
 All endpoints will be prefixed with `/api/v1`. All responses will be in JSON format. Timestamps are in UTC ISO 8601 format.
 
 ---
-**Authentication (Clerk Integration)**
+**Authentication**
 
-*Note: Authentication is handled entirely by Clerk. The Flask backend validates Clerk-issued JWTs.*
+*Note: Authentication is handled by a simple, custom-built workstation login system.*
 
-*   **JWT Validation Middleware**: All protected endpoints validate Clerk JWTs in the `Authorization: Bearer <token>` header
-*   **User Context**: Clerk user ID and profile information extracted from validated JWTs
-*   **No Custom Login Endpoint**: Authentication handled by Clerk's hosted UI and SDK
-*   **Automatic Token Refresh**: Clerk SDK handles token refresh automatically on the frontend
-*   **Session Management**: Clerk manages all session lifecycle, logout, and security features
+*   `POST /auth/login`
+    *   **Description**: Authenticates a workstation.
+    *   **Body**: `{ "workstation_id": "front-desk", "password": "shared-password" }`
+    *   **Success (200)**: `{ "token": "workstation-jwt" }`
+    *   **Error (401)**: `{ "message": "Invalid workstation ID or password" }`
+
+*   **JWT Validation Middleware**: All protected endpoints validate the workstation JWT in the `Authorization: Bearer <token>` header. The middleware makes the `workstation_id` available to the request context.
 
 **Authentication Headers for Protected Endpoints:**
 *   `Authorization: Bearer <workstation_jwt>`
