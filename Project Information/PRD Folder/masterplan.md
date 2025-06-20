@@ -297,6 +297,19 @@ The system uses PostgreSQL with SQLAlchemy ORM for robust data management and co
 
 #### 3.2.1 Core Models
 
+**Staff Model** - Represents staff members for attribution and tracking:
+```python
+class Staff(db.Model):
+    name = db.Column(db.String(100), primary_key=True)
+    is_active = db.Column(db.Boolean, default=True)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+    deactivated_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships - optional, for query optimization
+    actions = db.relationship('Event', backref='attributed_staff', lazy=True, 
+                             primaryjoin="Staff.name == foreign(Event.triggered_by)")
+```
+
 **Job Model** - Central entity representing each 3D print request:
 ```python
 class Job(db.Model):
@@ -394,6 +407,29 @@ The system's authentication is designed for a high-turnover, shared-terminal env
 - **Session Management**: A simple, long-lived JWT is issued to the browser upon successful workstation login. This token contains the `workstation_id` (e.g., "Front-Desk-Computer").
 - **Per-Action Attribution**: For every state-changing action (approve, reject, etc.), the UI modal **requires** the acting user to select their name from a dropdown list of active staff members.
 - **API Requirement**: The API endpoints for these actions will require a `staff_name` field in the request body. The backend will validate that the name is on the official staff list.
+
+#### 3.3.1.1 Staff Turnover Management
+To effectively manage staff turnover while maintaining system integrity, the following process will be implemented:
+
+**Staff Onboarding Process:**
+1. **Staff List Management**: The system includes an admin-accessible UI in the dashboard for managing the staff list, which is stored in the database.
+2. **Adding New Staff**: An administrator will add new staff members through this interface, providing their name as it should appear in attribution dropdowns.
+3. **Training Documentation**: New staff will be provided with documentation on the attribution model and how to select their name for actions.
+4. **No Individual Login Required**: Since authentication is workstation-based, new staff only need to be added to the staff list without creating credentials.
+5. **First Action Guidance**: The UI will highlight newly added staff names in the dropdown for a configurable period (e.g., 7 days) to help staff identify their name.
+
+**Staff Offboarding Process:**
+1. **Deactivation vs. Deletion**: When staff leave, administrators will mark them as "inactive" rather than deleting them completely, preserving historical attribution.
+2. **Audit Trail Preservation**: Past actions attributed to departed staff remain unchanged in the event log for accountability and historical reference.
+3. **Dropdown Visibility**: Inactive staff names will no longer appear in attribution dropdowns for new actions.
+4. **Visual Indication**: In historical event logs, names of inactive staff will be visually distinguished (e.g., greyed out or with an "(inactive)" label).
+5. **Reporting Access**: Reports can still filter by all staff names, including inactive ones, for complete historical accountability.
+
+**Implementation Requirements:**
+- The `Staff` model will include an `is_active` boolean field, defaulting to `true`.
+- The staff management UI will include "Add Staff," "Deactivate Staff," and "Reactivate Staff" capabilities.
+- Only active staff will be included in attribution dropdowns in the frontend.
+- API endpoints for staff list retrieval will include an optional `include_inactive` parameter.
 
 #### 3.3.2 Student Authentication: Email-Based Confirmation
 Students do not have accounts or passwords. Instead, their approval for a print job is handled via a secure, one-time-use email link.
@@ -1156,6 +1192,26 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
     *   **Success (200)**: `{ "message": "A new confirmation email has been sent." }`
     *   **Error (404)**: If job ID is not found or job is already confirmed/rejected.
     *   **Error (429)**: `{ "message": "You can request a new email in X minutes." }`
+
+---
+**Staff Management**
+
+*   `GET /staff`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Query Params**: `?include_inactive=true` (optional, defaults to false)
+    *   **Success (200)**: `{ "staff": [{"name": "Jane Doe", "is_active": true, "added_at": "timestamp"}, ...] }`
+
+*   `POST /staff`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Body**: `{ "name": "New Staff Name", "staff_name": "Admin User" }`
+    *   **Success (201)**: `{ "name": "New Staff Name", "is_active": true, "added_at": "timestamp" }`
+    *   **Error (409)**: `{ "message": "Staff member with this name already exists" }`
+
+*   `PATCH /staff/:name`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Body**: `{ "is_active": false, "staff_name": "Admin User" }`
+    *   **Success (200)**: `{ "name": "Staff Name", "is_active": false, "added_at": "timestamp", "deactivated_at": "timestamp" }`
+    *   **Error (404)**: `{ "message": "Staff member not found" }`
 
 ---
 **Staff Dashboard**
