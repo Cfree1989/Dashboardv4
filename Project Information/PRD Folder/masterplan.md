@@ -95,7 +95,7 @@ To ensure both ease of use in a chaotic lab environment and full accountability,
 - **Persistent Workstation Display**: The UI will always prominently display the name of the logged-in workstation (e.g., "Workstation: Front Desk").
 - **Mandatory Action Attribution**: For any state-changing operation (e.g., approving a job, marking it complete, adding a note), the UI modal for that action will contain a **mandatory dropdown menu** labeled "Performing Action As:". The staff member must select their own name from the list before they can proceed.
 - **Accountability**: This ensures that while the workstation's session is shared, every critical action is explicitly attributed to a specific staff member in the event logs. The `Event` model will store both the `workstation_id` and the `triggered_by` (the staff member's name).
-- **Staff List Management**: The list of staff members for the attribution dropdown will be managed via a simple configuration file or an admin interface.
+- **Staff List Management**: The staff list is stored centrally in the database and exposed through a `/api/staff` endpoint. All workstations fetch this list dynamically at login (and refresh it periodically). Administrators manage the list via a lightweight "Staff Management" section in the dashboard (add / remove / deactivate), ensuring immediate consistency across every terminal.
 
 #### 2.2.4 Key Constraints & Principles
 - **No Individual User Logins**: Staff do not have their own passwords for the system. Authentication is handled at the workstation level.
@@ -146,7 +146,7 @@ This project will adhere to simplicity and clarity while building a robust found
 1.  **Docker-Based Environment**: The entire application stack is defined in a `docker-compose.yml` file, ensuring a consistent, reproducible environment for both development and production. This simplifies setup and eliminates cross-platform compatibility issues.
 2.  **Simplified Authentication**: A custom-built workstation login system replaces the need for complex third-party identity providers.
 3.  **No Microservices**: Single Flask application with clear module organization.
-4.  **Progressive Enhancement**: Build solid foundation first, then add advanced features like custom protocol handlers.
+4.  **Progressive Enhancement**: Build solid foundation first, then add features like custom protocol handlers.
 5.  **Progressive Enhancement**: Build solid foundation, then add advanced dashboard features.
 
 ### 2.4 User Experience Requirements
@@ -193,9 +193,7 @@ This project will adhere to simplicity and clarity while building a robust found
 
 #### 2.4.1 Required Submission Form Introduction Text
 
-**The following text must appear at the top of the student submission form, unaltered:**
-
-> Before submitting your model for 3D printing, please ensure you have thoroughly reviewed our Additive Manufacturing Moodle page, read all the guides, and checked the checklist. If necessary, revisit and fix your model before submission. Your model must be scaled and simplified appropriately, often requiring a second version specifically optimized for 3D printing. We will not print models that are broken, messy, or too large. Your model must follow the rules and constraints of the machine. We will not fix or scale your model as we do not know your specific needs or project requirements. We print exactly what you send us; if the scale is wrong or you are unsatisfied with the product, it is your responsibility. We will gladly print another model for you at an additional cost. We are only responsible for print failures due to issues under our control.
+A mandatory warning and liability disclaimer must be displayed at the top of the student submission form. The full, unaltered text for this warning is specified in the "Student Submission UI/UX" description under **Section 3.4.2**.
 
 ## 3. System Architecture & Implementation Structure
 
@@ -346,6 +344,24 @@ class Job(db.Model):
    events = db.relationship('Event', backref='job', lazy=True)
 ```
 
+**Status Name Standardization**
+
+To maintain consistency across the codebase, job statuses follow these naming conventions:
+
+1. **Internal Identifiers (API, Code, Database):** UPPERCASE
+   - Example: `UPLOADED`, `PENDING`, `READYTOPRINT`, `PRINTING`, `COMPLETED`, `PAIDPICKEDUP`, `REJECTED`, `ARCHIVED`
+   - Used in: API endpoints, TypeScript types, database values, conditional logic
+
+2. **Directory Names:** PascalCase
+   - Example: `Uploaded/`, `Pending/`, `ReadyToPrint/`, `Printing/`, `Completed/`, `PaidPickedUp/`, `Archived/`
+   - Used in: File system organization
+
+3. **User Interface:** Title Case with spaces
+   - Example: "Uploaded", "Pending", "Ready to Print", "Printing", "Completed", "Paid & Picked Up", "Rejected"
+   - Used in: Dashboard displays, modals, status indicators
+
+This clear distinction helps maintain consistency while optimizing for each context.
+
 **Event Model** - Immutable audit trail for all system actions:
 ```python
 class Event(db.Model):
@@ -426,6 +442,8 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 **Event-Driven Architecture**: Every action generates immutable event logs with staff member attribution for complete audit trails.
 
 #### 3.4.2 Workflow Status Progression
+
+> **Note on Status Naming:** Throughout this document and codebase, job status identifiers are standardized in UPPERCASE format (e.g., `UPLOADED`, `PENDING`, `READYTOPRINT`) for all internal references, API endpoints, and database values. Directory names use PascalCase (e.g., `Uploaded/`), and user-facing displays use Title Case with spaces (e.g., "Ready to Print").
 
 **1. UPLOADED Status**
 * **Trigger:** Student completes submission through Next.js form, backend processes `POST /api/submit`
@@ -589,20 +607,30 @@ The system manages 3D print jobs through a comprehensive, event-driven workflow 
 
 > **Note:** All actions listed below automatically trigger an entry in the `Event` log as described in Section 3.2 and 3.4.
 
-### 4.1 Single-Computer Architecture & Resilient Storage
-1. **Shared File Storage:**
-   - All job files stored on a network share.
-   - This share must be mounted at the OS level on the single staff computer running the Flask app, ensuring a consistent path (e.g., Z:\3DPrintFiles\ or /mnt/3dprint_files).
-   - The Flask app references files using this path.
-   - metadata.json files reside alongside job files, providing resilient metadata handling.
+### 4.1 Deployment Topology: Central Backend, Multiple Clients
 
-> **Multi-Computer Operation:**
-> The system supports running the Flask application on up to two staff computers. Both computers must mount the shared storage at the same path (e.g., both use Z:\storage\ or both use /mnt/3dprint_files/), and both must be able to connect to the same PostgreSQL database. The custom protocol handler (SlicerOpener) must be installed and registered on both computers. Path consistency is critical for correct file access and protocol handler operation.
+To ensure system stability and simplify management, the system is designed with a centralized backend architecture.
 
-2. **Database Strategy (PostgreSQL Recommended):**
-   - Chosen Approach: The system will use PostgreSQL. The Flask application will run on the single, designated staff computer, acting as the server.
-   - Rationale: While SQLite is simpler, PostgreSQL offers superior concurrency, data integrity, and scalability, even in a small lab. This provides a significantly more robust and non-fragile backend, preventing potential locking issues or data corruption, especially with asynchronous tasks or multiple browser sessions accessing the system. It's a foundational choice for long-term resilience.
-   - The PostgreSQL server can run on the same staff computer or a dedicated server if available.
+1.  **Backend Host (One Computer):**
+    *   A single, designated staff PC or server acts as the **backend host**. This machine is responsible for running the entire Docker Compose stack, which includes:
+        *   The Flask API
+        *   The PostgreSQL Database
+        *   The Redis message broker and RQ worker
+    *   This centralized approach prevents database locking issues, simplifies backups, and ensures a single source of truth for all data and operations.
+
+2.  **Client Workstations (Up to Two Computers):**
+    *   Up to two additional lab computers can act as **client workstations**.
+    *   These machines **do not run any server code**. Staff simply access the Next.js dashboard by navigating to the backend host's network IP address in a web browser (e.g., `http://192.168.1.100`).
+    *   The only software required on client workstations is the `SlicerOpener` protocol handler, which enables them to open files directly from the browser.
+
+3.  **Shared Network Storage:**
+    *   A core requirement is a shared network storage location (e.g., a network drive or NAS).
+    *   **All computers** (the backend host and all client workstations) must mount this shared storage at the **exact same path** (e.g., `Z:\storage\` on Windows or `/mnt/3dprint_files` on Linux).
+    *   Path consistency is critical for the `SlicerOpener` protocol handler and the Flask API to correctly locate and manage job files.
+
+4.  **Database Strategy (PostgreSQL Recommended):**
+    *   The PostgreSQL database runs in a Docker container on the backend host.
+    *   This provides superior concurrency, data integrity, and scalability compared to file-based databases like SQLite, which is essential for a multi-user environment with background tasks.
 
 ### 4.2 Custom Protocol Handler
 - A custom URL protocol (e.g., 3dprint://) will be registered on the single staff computer.
