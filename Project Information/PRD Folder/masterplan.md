@@ -26,6 +26,9 @@ The system will cater primarily to two user roles:
 5.  **Workstation Authentication & Action Attribution**: A simple, per-computer shared password system combined with mandatory per-action user attribution to provide both ease of use and full accountability.
 6.  **Email notifications**: **Asynchronously** send automated updates to students for approvals, rejections, and completions.
 7.  **Direct file opening**: Custom `3dprint://` protocol handler to open files in local slicer software.
+8.  **Payment & pickup workflow**: Weight-based payment calculation with manual Tiger-Cash transaction recording and pickup confirmation functionality.
+9.  **Financial reporting**: Automated monthly Excel export with revenue and transaction data for administrative oversight.
+10. **Analytics dashboard**: Real-time operational insights, resource utilization metrics, and financial performance tracking.
 
 **Advanced Operational Features**:
 8.  **Enhanced operational dashboard**: Real-time auto-updating **Next.js interface** with comprehensive staff alerting:
@@ -82,7 +85,8 @@ The system will cater primarily to two user roles:
 -   **Routing Structure**:
     ```
     app/
-    ├─ dashboard/page.tsx     # Staff dashboard
+    ├─ dashboard/page.tsx     # Staff operational dashboard
+    ├─ analytics/page.tsx     # Analytics and insights dashboard
     ├─ submit/page.tsx        # Student submission form
     ├─ login/page.tsx         # Workstation login page
     └─ confirm/[token]/page.tsx # Student confirmation
@@ -122,8 +126,8 @@ To ensure both ease of use in a chaotic lab environment and full accountability,
 -   **Pricing Model**: Weight-only pricing ($0.10/gram filament, $0.20/gram resin) with $3.00 minimum charge.
 -   **Time Input**: Hour-based time inputs with conservative rounding (always round UP to nearest 0.5 hours).
 -   **Critical Dependencies**:
-    -   **Backend**: `Flask`, `Flask-SQLAlchemy`, `Flask-Migrate`, `Flask-CORS`, `Flask-Limiter`, `psycopg2-binary`, `python-dotenv`, `PyJWT`, `rq`.
-    -   **Frontend**: `next`, `react`, `react-dom`, `typescript`, `tailwindcss`, `@radix-ui/*`, `lucide-react`, `date-fns`, `class-variance-authority`, `clsx`, `tailwind-merge`.
+    -   **Backend**: `Flask`, `Flask-SQLAlchemy`, `Flask-Migrate`, `Flask-CORS`, `Flask-Limiter`, `psycopg2-binary`, `python-dotenv`, `PyJWT`, `rq`, `openpyxl`, `pandas`.
+    -   **Frontend**: `next`, `react`, `react-dom`, `typescript`, `tailwindcss`, `@radix-ui/*`, `lucide-react`, `date-fns`, `class-variance-authority`, `clsx`, `tailwind-merge`, `recharts`.
 
 ### 2.3 Beginner-Friendly Architecture Principles
 This project will adhere to simplicity and clarity while building a robust foundation:
@@ -228,6 +232,13 @@ V0DASHBOARDV4/
 │   │   │   └── modals/
 │   │   │       ├── approval-modal.tsx
 │   │   │       └── rejection-modal.tsx
+│   │   ├── analytics/       # Analytics dashboard components
+│   │   │   ├── overview-cards.tsx
+│   │   │   ├── trend-charts.tsx
+│   │   │   ├── resource-metrics.tsx
+│   │   │   └── financial-summary.tsx
+│   │   ├── payment/         # Payment workflow components  
+│   │   │   └── payment-modal.tsx
 │   │   ├── submission/      # Form components
 │   │   │   └── submission-form.tsx
 │   │   └── ui/              # shadcn/ui components
@@ -252,12 +263,15 @@ V0DASHBOARDV4/
 │   │   ├── models/
 │   │   │   ├── __init__.py
 │   │   │   ├── job.py       # Job model
-│   │   │   └── event.py     # Event log model
+│   │   │   ├── event.py     # Event log model
+│   │   │   └── payment.py   # Payment model
 │   │   ├── routes/
 │   │   │   ├── __init__.py
 │   │   │   ├── auth.py      # Authentication endpoints (workstation validation)
 │   │   │   ├── jobs.py      # Job management endpoints
-│   │   │   └── submit.py    # Student submission endpoints
+│   │   │   ├── submit.py    # Student submission endpoints
+│   │   │   ├── payment.py   # Payment processing endpoints
+│   │   │   └── analytics.py # Analytics and reporting endpoints
 │   │   ├── services/        # Business logic
 │   │   │   ├── __init__.py
 │   │   │   ├── file_service.py
@@ -386,6 +400,21 @@ class Event(db.Model):
    triggered_by = db.Column(db.String(100))      # Staff member's name from attribution dropdown
    user_name = db.Column(db.String(100))         # (DEPRECATED - Use triggered_by)
    workstation_id = db.Column(db.String(100))    # Identifier for the physical computer
+```
+
+**Payment Model** - Financial transaction tracking for completed jobs:
+```python
+class Payment(db.Model):
+    job_id = db.Column(db.String, db.ForeignKey('job.id'), primary_key=True)
+    grams = db.Column(db.Float, nullable=False)           # Actual weight from scale
+    price_cents = db.Column(db.Integer, nullable=False)   # Final calculated price
+    txn_no = db.Column(db.String(50), nullable=False)     # Tiger-Cash transaction number
+    picked_up_by = db.Column(db.String(100), nullable=False)  # Person who collected
+    paid_ts = db.Column(db.DateTime, default=datetime.utcnow)
+    paid_by_staff = db.Column(db.String(100), nullable=False) # Staff member who processed
+    
+    # Relationships
+    job = db.relationship('Job', backref='payment', uselist=False)
 ```
 
 #### 3.2.2 Key Design Decisions
@@ -1307,6 +1336,17 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
     *   **Success (200)**: Returns updated job. Logs `StatusReverted` event.
 
 ---
+**Payment & Pickup**
+
+*   `POST /jobs/<job_id>/payment`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Records payment and transitions job to PAIDPICKEDUP. The lock is automatically released upon completion.
+    *   **Body**: `{ "grams": 25.5, "txn_no": "TC123456", "picked_up_by": "Jane Doe", "staff_name": "Staff Member" }`
+    *   **Success (200)**: Returns updated job object with payment details
+    *   **Error (400)**: Validation errors for missing/invalid data
+    *   **Error (403)**: If job is not in COMPLETED status or user doesn't hold lock
+
+---
 **Admin Override Endpoints**
 
 *   `POST /jobs/<job_id>/admin/force-unlock`
@@ -1374,6 +1414,32 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
     *   **Success (200)**: `{ "message": "Pruning process completed", "jobs_deleted": 5 }`. Logs an `AdminAction` event and individual `JobDeleted` events for each job that is pruned.
 
 ---
+**Financial Reporting**
+
+*   `POST /export/payments`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Description**: Generates Excel export of payment data for specified period
+    *   **Body**: `{ "start_date": "2024-01-01", "end_date": "2024-01-31", "email_to": "admin@university.edu", "staff_name": "Admin User" }`
+    *   **Success (202)**: `{ "message": "Export queued for processing", "task_id": "export-123" }`
+
+---
+**Analytics & Insights**
+
+*   `GET /analytics/overview`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Query Params**: `?days=30&printer=all&discipline=all` (optional)
+    *   **Success (200)**: Operational metrics, resource utilization, and financial performance data
+
+*   `GET /analytics/trends`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Query Params**: `?period=monthly&metric=submissions&start_date=2024-01-01` (optional)
+    *   **Success (200)**: Time-series data for trend visualizations
+
+*   `GET /analytics/resources`
+    *   **Auth**: Required (Workstation JWT)
+    *   **Success (200)**: Printer utilization, material consumption, and capacity planning metrics
+
+---
 **Dashboard Stats & Analytics**
 
 *   `GET /stats`
@@ -1392,135 +1458,3 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
 - Consistent error response format: `{ "error": "error_code", "message": "Human readable message", "details": {...} }`
 - All list endpoints support pagination via `?page=1&limit=50` parameters
 - All protected endpoints log access attempts for security auditing
-
-## 7. Payment & Pickup Module Integration
-
-### 7.1 Overview & Feasibility
-- The Payment & Pickup module extends the job lifecycle by adding payment recording and pickup confirmation functionality
-- Fully compatible with existing workflow: COMPLETED → PAIDPICKEDUP transition
-- Adheres to established pricing model ($0.10/g filament, $0.20/g resin, $3.00 minimum)
-- Leverages existing workstation authentication and staff attribution model
-- Provides financial reporting capabilities via scheduled exports
-
-### 7.2 Architecture Integration
-
-**Database Extensions:**
-- New `Payment` model with one-to-one relationship to `Job` model
-- Fields: `job_id` (PK/FK), `grams`, `price_cents`, `txn_no`, `picked_up_by`, `paid_ts`, `paid_by_staff`
-
-**API Integration:**
-- New endpoint: `POST /api/jobs/<job_id>/payment` - records payment and transitions job to PAIDPICKEDUP
-- Requires standard workstation JWT authentication
-- Enforces mandatory staff attribution
-- Uses existing job locking mechanism to prevent concurrent edits
-- Follows established file movement pattern (Completed/ → PaidPickedUp/)
-
-**Workflow Integration:**
-- New modal in dashboard UI with input fields for:
-  - Grams (from scale measurement)
-  - Tiger-Cash Transaction # (from card terminal)
-  - Picked-Up By (defaults to job owner, editable)
-- Real-time price preview based on weight and material type
-- Final price calculation performed server-side
-- Appropriate event logging with staff attribution
-
-**Reporting Capabilities:**
-- Monthly export functionality (`POST /api/export/payments`)
-- Background task generates Excel file with required financial columns
-- Uses existing RQ worker infrastructure for asynchronous processing
-- Delivers reports via email using established Office 365 integration
-
-### 7.3 Key Considerations
-
-**Security & Data Integrity:**
-- All state transitions follow existing concurrency control model
-- Minimum charge validation in both frontend and API layers
-- Strict validation of transaction numbers and input data
-- Idempotency controls to prevent duplicate payments
-
-**Error Handling:**
-- Transaction rollback if file operations fail
-- Appropriate UI feedback for validation errors
-- Handles network errors with clear recovery paths
-
-## 8. Analytics Dashboard
-
-### 8.1 Overview & Purpose
-
-The Analytics Dashboard provides staff and administrators with data-driven insights into the 3D printing operation. It visualizes operational metrics, resource utilization, and financial performance to enable informed decision-making and process optimization.
-
-- Complements the operational dashboard with historical analysis capabilities
-- Aggregates data across the entire job lifecycle for trend identification
-- Enables resource allocation planning and workflow optimization
-- Provides financial performance visibility for stakeholder reporting
-
-### 8.2 Architecture Integration
-
-**Database Considerations:**
-- Leverages existing Job and Payment models for core data
-- Implements denormalized views for efficient query performance
-- Adds strategic indices to support time-series aggregation queries
-- Uses materialized views for frequently accessed metrics
-
-**API Extensions:**
-- New `/api/analytics` endpoint namespace for metrics and insights
-- Implements standard filtering parameters (date range, materials, printers, etc.)
-- Follows established authentication and authorization patterns
-- Returns pre-aggregated data to minimize client-side processing
-
-**Frontend Components:**
-- Dedicated analytics page in the dashboard section
-- Interactive data visualizations using React-compatible charting library
-- Consistent UI controls for filtering and customization
-- Responsive design that maintains usability across device sizes
-
-**Data Processing:**
-- Server-side aggregation for consistency and performance
-- Client-side filtering for interactive exploration
-- Background jobs for complex metric calculations
-- Appropriate caching strategies for frequently accessed data
-
-### 8.3 Core Visualizations
-
-**Operational Insights:**
-- Job status distribution (current snapshot)
-- Job throughput over time (daily/weekly/monthly)
-- Time spent in each workflow stage
-- Submission patterns by time period
-
-**Resource Utilization:**
-- Printer usage distribution and availability
-- Material consumption by type and printer
-- Job complexity metrics (size, print time, weight)
-- Capacity planning indicators
-
-**Financial Analytics:**
-- Revenue trends over time
-- Cost and pricing analysis by material type
-- Average job value metrics
-- Department/discipline breakdown of usage
-
-**Academic Usage:**
-- Distribution across disciplines and courses
-- Student submission patterns throughout semester
-- Recurring vs. one-time user metrics
-- Educational resource allocation insights
-
-### 8.4 Integration Considerations
-
-**Authentication & Access Control:**
-- Uses existing workstation authentication system
-- All analytics views require valid JWT authentication
-- No additional permissions model required (unified with dashboard access)
-
-**Performance Safeguards:**
-- Implements query timeouts for complex aggregations
-- Uses pagination and data windowing for large result sets
-- Background processing for expensive calculations
-- Caching headers to reduce redundant API calls
-
-**Extensibility:**
-- Designed to accommodate new metrics and visualizations
-- Supports export functionality for external analysis
-- API designed for potential future integration with campus-wide systems
-- Filter parameters exposed via URL for shareable views
