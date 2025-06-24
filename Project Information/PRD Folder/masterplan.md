@@ -1392,3 +1392,53 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
 - Consistent error response format: `{ "error": "error_code", "message": "Human readable message", "details": {...} }`
 - All list endpoints support pagination via `?page=1&limit=50` parameters
 - All protected endpoints log access attempts for security auditing
+
+## 7. Payment & Pickup Module Integration
+
+### 7.1 Overview & Feasibility
+- The Payment & Pickup module extends the job lifecycle by adding payment recording and pickup confirmation functionality
+- Fully compatible with existing workflow: COMPLETED → PAIDPICKEDUP transition
+- Adheres to established pricing model ($0.10/g filament, $0.20/g resin, $3.00 minimum)
+- Leverages existing workstation authentication and staff attribution model
+- Provides financial reporting capabilities via scheduled exports
+
+### 7.2 Architecture Integration
+
+**Database Extensions:**
+- New `Payment` model with one-to-one relationship to `Job` model
+- Fields: `job_id` (PK/FK), `grams`, `price_cents`, `txn_no`, `picked_up_by`, `paid_ts`, `paid_by_staff`
+
+**API Integration:**
+- New endpoint: `POST /api/jobs/<job_id>/payment` - records payment and transitions job to PAIDPICKEDUP
+- Requires standard workstation JWT authentication
+- Enforces mandatory staff attribution
+- Uses existing job locking mechanism to prevent concurrent edits
+- Follows established file movement pattern (Completed/ → PaidPickedUp/)
+
+**Workflow Integration:**
+- New modal in dashboard UI with input fields for:
+  - Grams (from scale measurement)
+  - Tiger-Cash Transaction # (from card terminal)
+  - Picked-Up By (defaults to job owner, editable)
+- Real-time price preview based on weight and material type
+- Final price calculation performed server-side
+- Appropriate event logging with staff attribution
+
+**Reporting Capabilities:**
+- Monthly export functionality (`POST /api/export/payments`)
+- Background task generates Excel file with required financial columns
+- Uses existing RQ worker infrastructure for asynchronous processing
+- Delivers reports via email using established Office 365 integration
+
+### 7.3 Key Considerations
+
+**Security & Data Integrity:**
+- All state transitions follow existing concurrency control model
+- Minimum charge validation in both frontend and API layers
+- Strict validation of transaction numbers and input data
+- Idempotency controls to prevent duplicate payments
+
+**Error Handling:**
+- Transaction rollback if file operations fail
+- Appropriate UI feedback for validation errors
+- Handles network errors with clear recovery paths
