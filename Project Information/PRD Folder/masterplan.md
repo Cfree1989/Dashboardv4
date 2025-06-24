@@ -1442,3 +1442,85 @@ All endpoints will be prefixed with `/api/v1`. All responses will be in JSON for
 - Transaction rollback if file operations fail
 - Appropriate UI feedback for validation errors
 - Handles network errors with clear recovery paths
+
+## 8. Analytics Dashboard
+
+### 8.1 Overview & Purpose
+
+The Analytics Dashboard provides staff and administrators with data-driven insights into the 3D printing operation. It visualizes operational metrics, resource utilization, and financial performance to enable informed decision-making and process optimization.
+
+- Complements the operational dashboard with historical analysis capabilities
+- Aggregates data across the entire job lifecycle for trend identification
+- Enables resource allocation planning and workflow optimization
+- Provides financial performance visibility for stakeholder reporting
+
+### 8.2 Architecture Integration
+
+**Database Considerations:**
+- Leverages existing Job and Payment models for core data
+- Implements denormalized views for efficient query performance
+- Adds strategic indices to support time-series aggregation queries
+- Uses materialized views for frequently accessed metrics
+
+**API Extensions:**
+- New `/api/analytics` endpoint namespace for metrics and insights
+- Implements standard filtering parameters (date range, materials, printers, etc.)
+- Follows established authentication and authorization patterns
+- Returns pre-aggregated data to minimize client-side processing
+
+**Frontend Components:**
+- Dedicated analytics page in the dashboard section
+- Interactive data visualizations using React-compatible charting library
+- Consistent UI controls for filtering and customization
+- Responsive design that maintains usability across device sizes
+
+**Data Processing:**
+- Server-side aggregation for consistency and performance
+- Client-side filtering for interactive exploration
+- Background jobs for complex metric calculations
+- Appropriate caching strategies for frequently accessed data
+
+### 8.3 Core Visualizations
+
+**Operational Insights:**
+- Job status distribution (current snapshot)
+- Job throughput over time (daily/weekly/monthly)
+- Time spent in each workflow stage
+- Submission patterns by time period
+
+**Resource Utilization:**
+- Printer usage distribution and availability
+- Material consumption by type and printer
+- Job complexity metrics (size, print time, weight)
+- Capacity planning indicators
+
+**Financial Analytics:**
+- Revenue trends over time
+- Cost and pricing analysis by material type
+- Average job value metrics
+- Department/discipline breakdown of usage
+
+**Academic Usage:**
+- Distribution across disciplines and courses
+- Student submission patterns throughout semester
+- Recurring vs. one-time user metrics
+- Educational resource allocation insights
+
+### 8.4 Integration Considerations
+
+**Authentication & Access Control:**
+- Uses existing workstation authentication system
+- All analytics views require valid JWT authentication
+- No additional permissions model required (unified with dashboard access)
+
+**Performance Safeguards:**
+- Implements query timeouts for complex aggregations
+- Uses pagination and data windowing for large result sets
+- Background processing for expensive calculations
+- Caching headers to reduce redundant API calls
+
+**Extensibility:**
+- Designed to accommodate new metrics and visualizations
+- Supports export functionality for external analysis
+- API designed for potential future integration with campus-wide systems
+- Filter parameters exposed via URL for shareable views
