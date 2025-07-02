@@ -1,0 +1,243 @@
+@startuml job-domain-model
+!theme plain
+title Dashboard v4 - Job Domain Model
+
+' Job Management Domain Model
+' AI Agent Context: Core domain entities and their relationships
+
+skinparam backgroundColor white
+skinparam class {
+    BackgroundColor lightblue
+    BorderColor darkblue
+    ArrowColor darkblue
+}
+
+package "Job Management Domain" {
+    
+    class Job {
+        -id: string
+        -title: string
+        -description: string
+        -status: JobStatus
+        -priority: Priority
+        -createdAt: Date
+        -updatedAt: Date
+        -assignedTo: string
+        -submittedBy: string
+        -dueDate: Date?
+        -estimatedHours: number?
+        -actualHours: number?
+        -tags: string[]
+        --
+        +approve(notes?: string): void
+        +reject(reason: string): void
+        +updateStatus(status: JobStatus): void
+        +addNote(note: JobNote): void
+        +assignTo(userId: string): void
+        +isOverdue(): boolean
+        +canBeApproved(): boolean
+        +canBeRejected(): boolean
+        +getStatusHistory(): JobStatusChange[]
+    }
+
+    enum JobStatus {
+        PENDING
+        APPROVED
+        REJECTED
+        COMPLETED
+        ON_HOLD
+        CANCELLED
+    }
+
+    enum Priority {
+        LOW
+        MEDIUM
+        HIGH
+        URGENT
+    }
+
+    class JobNote {
+        -id: string
+        -jobId: string
+        -content: string
+        -author: string
+        -createdAt: Date
+        -type: NoteType
+        --
+        +edit(content: string): void
+        +isEditableBy(userId: string): boolean
+    }
+
+    enum NoteType {
+        COMMENT
+        APPROVAL_NOTE
+        REJECTION_REASON
+        STATUS_CHANGE
+        SYSTEM_NOTE
+    }
+
+    class JobStatusChange {
+        -id: string
+        -jobId: string
+        -fromStatus: JobStatus
+        -toStatus: JobStatus
+        -changedBy: string
+        -changedAt: Date
+        -reason?: string
+        --
+        +getTimeDiff(): number
+        +isValidTransition(): boolean
+    }
+
+    class User {
+        -id: string
+        -username: string
+        -email: string
+        -fullName: string
+        -role: UserRole
+        -department: string
+        -isActive: boolean
+        -lastLoginAt: Date?
+        --
+        +canApproveJobs(): boolean
+        +canRejectJobs(): boolean
+        +canSubmitJobs(): boolean
+        +canViewJob(job: Job): boolean
+        +getAssignedJobs(): Job[]
+        +getJobsForReview(): Job[]
+    }
+
+    enum UserRole {
+        ADMIN
+        REVIEWER
+        SUBMITTER
+        VIEWER
+    }
+
+    class JobAttachment {
+        -id: string
+        -jobId: string
+        -fileName: string
+        -fileSize: number
+        -mimeType: string
+        -uploadedBy: string
+        -uploadedAt: Date
+        -storageUrl: string
+        --
+        +download(): Promise<Blob>
+        +delete(): Promise<void>
+        +getDownloadUrl(): string
+        +isImage(): boolean
+        +isDocument(): boolean
+    }
+
+    class JobFilter {
+        -status?: JobStatus[]
+        -priority?: Priority[]
+        -assignedTo?: string[]
+        -submittedBy?: string[]
+        -dateRange?: DateRange
+        -searchText?: string
+        -tags?: string[]
+        --
+        +apply(jobs: Job[]): Job[]
+        +reset(): void
+        +isEmpty(): boolean
+        +serialize(): string
+        +deserialize(filter: string): JobFilter
+    }
+
+    class DateRange {
+        -startDate: Date
+        -endDate: Date
+        --
+        +contains(date: Date): boolean
+        +isValid(): boolean
+        +getDurationDays(): number
+    }
+
+    class JobStatistics {
+        -totalJobs: number
+        -pendingJobs: number
+        -approvedJobs: number
+        -rejectedJobs: number
+        -completedJobs: number
+        -averageProcessingTime: number
+        -overdueJobs: number
+        --
+        +getApprovalRate(): number
+        +getRejectionRate(): number
+        +getProcessingEfficiency(): number
+        +refresh(): void
+    }
+
+    class DashboardState {
+        -jobs: Job[]
+        -selectedFilter: JobFilter
+        -currentUser: User
+        -soundEnabled: boolean
+        -lastUpdated: Date
+        -isLoading: boolean
+        -error?: string
+        --
+        +filterJobs(): Job[]
+        +refreshJobs(): Promise<void>
+        +selectJob(jobId: string): Job?
+        +updateJobStatus(jobId: string, status: JobStatus): void
+        +toggleSound(): void
+        +getStatistics(): JobStatistics
+    }
+}
+
+' Relationships
+Job ||--o{ JobNote : "has notes"
+Job ||--o{ JobStatusChange : "has status history"
+Job ||--o{ JobAttachment : "has attachments"
+Job }o--|| User : "assigned to"
+Job }o--|| User : "submitted by"
+
+JobNote }o--|| User : "authored by"
+JobStatusChange }o--|| User : "changed by"
+JobAttachment }o--|| User : "uploaded by"
+
+Job ||--|| JobStatus : "current status"
+Job ||--|| Priority : "has priority"
+JobNote ||--|| NoteType : "has type"
+User ||--|| UserRole : "has role"
+
+DashboardState ||--o{ Job : "manages"
+DashboardState ||--|| JobFilter : "applies filter"
+DashboardState ||--|| User : "current user"
+DashboardState ||--|| JobStatistics : "displays stats"
+
+JobFilter ||--o{ DateRange : "uses date range"
+
+note as N1
+  Dashboard v4 Job Domain Model
+  
+  AI Agent Context:
+  - Core entities: Job, User, JobNote, JobAttachment
+  - Job lifecycle: PENDING → APPROVED/REJECTED → COMPLETED
+  - User roles determine permissions for job operations
+  - Rich domain model with business logic methods
+  
+  Key Patterns:
+  - Aggregate root: Job with related entities
+  - Value objects: JobStatus, Priority, DateRange
+  - Domain services: JobFilter, JobStatistics
+  - State management: DashboardState coordinates UI state
+  
+  Business Rules:
+  - Jobs must have rejection reason when rejected
+  - Only certain roles can approve/reject jobs
+  - Status transitions follow defined workflow
+  - Audit trail maintained through status changes
+  
+  Data Integrity:
+  - Required fields: id, title, status, priority
+  - Immutable audit fields: createdAt, submittedBy
+  - Validation rules in domain methods
+  - Foreign key relationships enforced
+end note
+
+@enduml 

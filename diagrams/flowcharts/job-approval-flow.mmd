@@ -1,0 +1,96 @@
+%%{init: {'theme':'neutral', 'themeVariables': {'primaryColor':'#0066cc'}}}%%
+flowchart TD
+    %% Dashboard v4 - Job Approval Flow
+    %% AI Agent Context: Complete business process for job approval workflow
+
+    Start([User Opens Dashboard]) --> LoadJobs[Load Jobs from API]
+    LoadJobs --> FilterPending{Filter to Pending Jobs?}
+    
+    FilterPending -->|Yes| ShowPending[Display Pending Jobs Only]
+    FilterPending -->|No| ShowAll[Display All Jobs]
+    
+    ShowPending --> SelectJob[User Selects Job to Review]
+    ShowAll --> SelectJob
+    
+    SelectJob --> ReviewJob[Review Job Details]
+    ReviewJob --> Decision{Approve or Reject?}
+    
+    Decision -->|Approve| OpenApprovalModal[Open Approval Modal]
+    Decision -->|Reject| OpenRejectionModal[Open Rejection Modal]
+    Decision -->|Cancel| SelectJob
+    
+    %% Approval Flow
+    OpenApprovalModal --> AddNotes{Add Notes?}
+    AddNotes -->|Yes| EnterNotes[Enter Approval Notes]
+    AddNotes -->|No| ConfirmApproval[Click Confirm]
+    EnterNotes --> ConfirmApproval
+    
+    ConfirmApproval --> ValidateApproval{Validate Permissions?}
+    ValidateApproval -->|Valid| ProcessApproval[Send Approval Request]
+    ValidateApproval -->|Invalid| ShowApprovalError[Show Permission Error]
+    
+    ProcessApproval --> ApprovalAPI{API Success?}
+    ApprovalAPI -->|Success| UpdateJobStatus[Update Job to Approved]
+    ApprovalAPI -->|Error| HandleApprovalError[Handle API Error]
+    
+    %% Rejection Flow
+    OpenRejectionModal --> EnterReason[Enter Rejection Reason]
+    EnterReason --> ValidateReason{Reason Required?}
+    ValidateReason -->|Valid| ConfirmRejection[Click Confirm]
+    ValidateReason -->|Missing| ShowReasonError[Show Reason Required Error]
+    
+    ConfirmRejection --> ValidateRejection{Validate Permissions?}
+    ValidateRejection -->|Valid| ProcessRejection[Send Rejection Request]
+    ValidateRejection -->|Invalid| ShowRejectionError[Show Permission Error]
+    
+    ProcessRejection --> RejectionAPI{API Success?}
+    RejectionAPI -->|Success| UpdateJobRejected[Update Job to Rejected]
+    RejectionAPI -->|Error| HandleRejectionError[Handle API Error]
+    
+    %% Success Flows
+    UpdateJobStatus --> TriggerNotifications[Trigger Notifications]
+    UpdateJobRejected --> TriggerNotifications
+    
+    TriggerNotifications --> PlaySound{Sound Enabled?}
+    PlaySound -->|Yes| PlayNotificationSound[Play Success Sound]
+    PlaySound -->|No| UpdateUI[Update Dashboard UI]
+    PlayNotificationSound --> UpdateUI
+    
+    UpdateUI --> UpdateStats[Update Job Statistics]
+    UpdateStats --> CloseModal[Close Modal]
+    CloseModal --> ShowSuccess[Show Success Message]
+    ShowSuccess --> RefreshList[Refresh Job List]
+    
+    %% Error Flows
+    HandleApprovalError --> ShowApprovalAPIError[Show API Error Message]
+    HandleRejectionError --> ShowRejectionAPIError[Show API Error Message]
+    ShowApprovalError --> OpenApprovalModal
+    ShowRejectionError --> OpenRejectionModal
+    ShowReasonError --> EnterReason
+    ShowApprovalAPIError --> SelectJob
+    ShowRejectionAPIError --> SelectJob
+    
+    %% Real-time Updates
+    RefreshList --> CheckRealTimeUpdates{Real-time Update?}
+    CheckRealTimeUpdates -->|Yes| MergeUpdates[Merge Remote Changes]
+    CheckRealTimeUpdates -->|No| WaitForAction[Wait for User Action]
+    
+    MergeUpdates --> NotifyChanges{Notify Changes?}
+    NotifyChanges -->|Yes| ShowUpdateNotification[Show Update Notification]
+    NotifyChanges -->|No| WaitForAction
+    ShowUpdateNotification --> WaitForAction
+    
+    WaitForAction --> SelectJob
+    
+    %% Styling
+    classDef startEnd fill:#e8f5e8,stroke:#4caf50,stroke-width:3px
+    classDef process fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+    classDef decision fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    classDef error fill:#ffebee,stroke:#f44336,stroke-width:2px
+    classDef success fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
+    
+    class Start,RefreshList startEnd
+    class LoadJobs,ShowPending,ShowAll,SelectJob,ReviewJob,AddNotes,EnterNotes,ProcessApproval,ProcessRejection,TriggerNotifications,UpdateUI,UpdateStats,CloseModal,RefreshList,MergeUpdates process
+    class FilterPending,Decision,ValidateApproval,ApprovalAPI,ValidateReason,ValidateRejection,RejectionAPI,PlaySound,CheckRealTimeUpdates,NotifyChanges decision
+    class ShowApprovalError,ShowRejectionError,ShowReasonError,HandleApprovalError,HandleRejectionError,ShowApprovalAPIError,ShowRejectionAPIError error
+    class UpdateJobStatus,UpdateJobRejected,PlayNotificationSound,ShowSuccess,ShowUpdateNotification success 

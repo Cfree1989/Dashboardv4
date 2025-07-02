@@ -1,0 +1,132 @@
+%%{init: {'theme':'neutral', 'themeVariables': {'primaryColor':'#0066cc'}}}%%
+flowchart TD
+    %% Dashboard v4 - User Navigation Flow
+    %% AI Agent Context: User journey and navigation patterns
+
+    Entry([User Accesses Dashboard]) --> Auth{Authenticated?}
+    Auth -->|No| Login[Redirect to Login]
+    Auth -->|Yes| LoadDashboard[Load Dashboard]
+    
+    Login --> Auth
+    
+    LoadDashboard --> CheckPermissions{Check User Role}
+    CheckPermissions -->|Admin| ShowAdminView[Show Admin Features]
+    CheckPermissions -->|Reviewer| ShowReviewerView[Show Review Features]
+    CheckPermissions -->|Submitter| ShowSubmitterView[Show Submit Features]
+    CheckPermissions -->|Viewer| ShowViewerView[Show Read-Only View]
+    
+    ShowAdminView --> MainDashboard[Main Dashboard Interface]
+    ShowReviewerView --> MainDashboard
+    ShowSubmitterView --> MainDashboard
+    ShowViewerView --> MainDashboard
+    
+    MainDashboard --> UserActions{User Action}
+    
+    %% Status Tab Navigation
+    UserActions -->|Click Status Tab| StatusFilter{Which Status?}
+    StatusFilter -->|All| ShowAllJobs[Display All Jobs]
+    StatusFilter -->|Pending| ShowPendingJobs[Display Pending Jobs]
+    StatusFilter -->|Approved| ShowApprovedJobs[Display Approved Jobs]
+    StatusFilter -->|Rejected| ShowRejectedJobs[Display Rejected Jobs]
+    StatusFilter -->|Completed| ShowCompletedJobs[Display Completed Jobs]
+    
+    %% Job Actions
+    UserActions -->|Click Job Card| JobActions{Job Action}
+    JobActions -->|View Details| ShowJobDetails[Show Job Details Modal]
+    JobActions -->|Approve| CheckApprovePermission{Can Approve?}
+    JobActions -->|Reject| CheckRejectPermission{Can Reject?}
+    JobActions -->|Edit| CheckEditPermission{Can Edit?}
+    
+    %% Permission Checks
+    CheckApprovePermission -->|Yes| OpenApprovalModal[Open Approval Modal]
+    CheckApprovePermission -->|No| ShowPermissionError[Show Permission Error]
+    CheckRejectPermission -->|Yes| OpenRejectionModal[Open Rejection Modal]
+    CheckRejectPermission -->|No| ShowPermissionError
+    CheckEditPermission -->|Yes| OpenEditModal[Open Edit Modal]
+    CheckEditPermission -->|No| ShowPermissionError
+    
+    %% Settings and Preferences
+    UserActions -->|Sound Toggle| ToggleSound[Toggle Sound Preference]
+    UserActions -->|Refresh| RefreshJobs[Refresh Job List]
+    UserActions -->|Filter| OpenFilterPanel[Open Advanced Filters]
+    UserActions -->|Search| OpenSearch[Open Search Interface]
+    
+    %% Modal Actions
+    OpenApprovalModal --> ApprovalActions{Approval Action}
+    ApprovalActions -->|Confirm| ProcessApproval[Process Approval]
+    ApprovalActions -->|Cancel| CloseModal[Close Modal]
+    
+    OpenRejectionModal --> RejectionActions{Rejection Action}
+    RejectionActions -->|Confirm| ProcessRejection[Process Rejection]
+    RejectionActions -->|Cancel| CloseModal
+    
+    ShowJobDetails --> DetailActions{Detail Action}
+    DetailActions -->|Close| CloseModal
+    DetailActions -->|Download Attachment| DownloadFile[Download File]
+    DetailActions -->|View History| ShowJobHistory[Show Status History]
+    
+    %% Navigation Return Paths
+    ShowAllJobs --> UserActions
+    ShowPendingJobs --> UserActions
+    ShowApprovedJobs --> UserActions
+    ShowRejectedJobs --> UserActions
+    ShowCompletedJobs --> UserActions
+    
+    ProcessApproval --> Success{Success?}
+    ProcessRejection --> Success
+    Success -->|Yes| UpdateUI[Update UI]
+    Success -->|No| ShowError[Show Error Message]
+    
+    UpdateUI --> UserActions
+    ShowError --> UserActions
+    CloseModal --> UserActions
+    ShowPermissionError --> UserActions
+    ToggleSound --> UserActions
+    RefreshJobs --> UserActions
+    DownloadFile --> UserActions
+    ShowJobHistory --> UserActions
+    
+    %% Advanced Features
+    OpenFilterPanel --> FilterActions{Filter Action}
+    FilterActions -->|Apply| ApplyFilters[Apply Custom Filters]
+    FilterActions -->|Reset| ResetFilters[Reset to Default]
+    FilterActions -->|Save| SaveFilterPreset[Save Filter Preset]
+    FilterActions -->|Cancel| CloseFilterPanel[Close Filter Panel]
+    
+    OpenSearch --> SearchActions{Search Action}
+    SearchActions -->|Search| ExecuteSearch[Execute Search Query]
+    SearchActions -->|Clear| ClearSearch[Clear Search Results]
+    SearchActions -->|Cancel| CloseSearch[Close Search]
+    
+    ApplyFilters --> UserActions
+    ResetFilters --> UserActions
+    SaveFilterPreset --> UserActions
+    CloseFilterPanel --> UserActions
+    ExecuteSearch --> UserActions
+    ClearSearch --> UserActions
+    CloseSearch --> UserActions
+    
+    %% Error Recovery
+    ShowError --> ErrorActions{Error Action}
+    ErrorActions -->|Retry| RetryAction[Retry Last Action]
+    ErrorActions -->|Cancel| UserActions
+    RetryAction --> UserActions
+    
+    %% Logout Flow
+    UserActions -->|Logout| ConfirmLogout{Confirm Logout?}
+    ConfirmLogout -->|Yes| Logout[Clear Session]
+    ConfirmLogout -->|No| UserActions
+    Logout --> Entry
+    
+    %% Styling
+    classDef entry fill:#e8f5e8,stroke:#4caf50,stroke-width:3px
+    classDef process fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+    classDef decision fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    classDef error fill:#ffebee,stroke:#f44336,stroke-width:2px
+    classDef success fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
+    
+    class Entry,MainDashboard entry
+    class LoadDashboard,ShowAdminView,ShowReviewerView,ShowSubmitterView,ShowViewerView,ShowAllJobs,ShowPendingJobs,ShowApprovedJobs,ShowRejectedJobs,ShowCompletedJobs,ProcessApproval,ProcessRejection,UpdateUI,ToggleSound,RefreshJobs process
+    class Auth,CheckPermissions,UserActions,StatusFilter,JobActions,CheckApprovePermission,CheckRejectPermission,CheckEditPermission,ApprovalActions,RejectionActions,DetailActions,Success,FilterActions,SearchActions,ErrorActions,ConfirmLogout decision
+    class ShowPermissionError,ShowError error
+    class OpenApprovalModal,OpenRejectionModal,ShowJobDetails,DownloadFile success 

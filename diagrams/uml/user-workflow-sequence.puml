@@ -1,0 +1,247 @@
+@startuml user-workflow-sequence
+!theme plain
+title Dashboard v4 - Job Approval Workflow Sequence
+
+' Job Approval Workflow Sequence Diagram
+' AI Agent Context: Complete interaction flow for job approval process
+
+actor Reviewer as "Job Reviewer"
+participant WebApp as "Dashboard\nWeb App"
+participant Context as "Dashboard\nContext"
+participant APIClient as "API Client"
+participant APIGateway as "API Gateway"
+participant JobService as "Job Service"
+participant Database as "PostgreSQL\nDatabase"
+participant NotificationService as "Notification\nService"
+participant WebSocket as "WebSocket\nConnection"
+participant SoundManager as "Sound\nManager"
+
+== Initial Dashboard Load ==
+
+Reviewer -> WebApp: Navigate to dashboard
+activate WebApp
+
+WebApp -> Context: Initialize dashboard state
+activate Context
+
+Context -> APIClient: fetchJobs()
+activate APIClient
+
+APIClient -> APIGateway: GET /api/jobs
+activate APIGateway
+
+APIGateway -> JobService: getJobsForUser(userId, filters)
+activate JobService
+
+JobService -> Database: SELECT jobs WHERE assigned_to = ? OR role_permissions
+activate Database
+Database -> JobService: job records
+deactivate Database
+
+JobService -> APIGateway: jobs array
+deactivate JobService
+
+APIGateway -> APIClient: 200 OK + jobs data
+deactivate APIGateway
+
+APIClient -> Context: updateJobs(jobs)
+Context -> WebApp: render job list
+deactivate APIClient
+
+WebApp -> Reviewer: Display dashboard with pending jobs
+deactivate Context
+deactivate WebApp
+
+== Job Approval Process ==
+
+Reviewer -> WebApp: Click "Approve" on job card
+activate WebApp
+
+WebApp -> WebApp: Open approval modal
+WebApp -> Reviewer: Show approval modal with job details
+
+Reviewer -> WebApp: Enter approval notes (optional)
+Reviewer -> WebApp: Click "Confirm" button
+
+WebApp -> Context: approveJob(jobId, notes)
+activate Context
+
+Context -> APIClient: approveJob(jobId, notes)
+activate APIClient
+
+' Optimistic update
+Context -> WebApp: Update job status to "approved" (optimistic)
+WebApp -> Reviewer: Show success feedback immediately
+
+APIClient -> APIGateway: POST /api/jobs/:id/approve
+activate APIGateway
+
+APIGateway -> APIGateway: Validate user permissions
+APIGateway -> APIGateway: Validate job can be approved
+
+APIGateway -> JobService: approveJob(jobId, userId, notes)
+activate JobService
+
+JobService -> Database: BEGIN TRANSACTION
+activate Database
+
+JobService -> Database: UPDATE jobs SET status='approved', updated_at=NOW()
+JobService -> Database: INSERT INTO job_status_changes
+JobService -> Database: INSERT INTO job_notes (if notes provided)
+
+Database -> JobService: Transaction committed
+deactivate Database
+
+JobService -> NotificationService: triggerJobApprovalNotification(job)
+activate NotificationService
+
+NotificationService -> NotificationService: Prepare notification payload
+NotificationService -> WebSocket: broadcast job status change
+activate WebSocket
+
+WebSocket -> WebApp: Real-time job update event
+WebApp -> Context: handleRealTimeUpdate(jobUpdate)
+Context -> WebApp: Update UI with confirmed status
+
+WebSocket -> SoundManager: trigger notification sound
+activate SoundManager
+SoundManager -> SoundManager: Check sound preferences
+SoundManager -> Reviewer: Play approval sound (if enabled)
+deactivate SoundManager
+
+deactivate WebSocket
+
+NotificationService -> NotificationService: Queue external notifications
+' External email/SMS notifications happen asynchronously
+deactivate NotificationService
+
+JobService -> APIGateway: success response
+deactivate JobService
+
+APIGateway -> APIClient: 200 OK + updated job
+deactivate APIGateway
+
+APIClient -> Context: Job approval confirmed
+deactivate APIClient
+
+Context -> WebApp: Update job statistics
+Context -> WebApp: Close approval modal
+deactivate Context
+
+WebApp -> Reviewer: Display success message
+deactivate WebApp
+
+== Error Handling Scenario ==
+
+note over Reviewer, SoundManager
+  Alternative flow: API error during approval
+end note
+
+Reviewer -> WebApp: Click "Approve" on job card
+activate WebApp
+
+WebApp -> Context: approveJob(jobId, notes)
+activate Context
+
+Context -> APIClient: approveJob(jobId, notes)
+activate APIClient
+
+' Optimistic update
+Context -> WebApp: Update job status to "approved" (optimistic)
+
+APIClient -> APIGateway: POST /api/jobs/:id/approve
+activate APIGateway
+
+APIGateway -> JobService: approveJob(jobId, userId, notes)
+activate JobService
+
+JobService -> Database: BEGIN TRANSACTION
+activate Database
+
+Database -> JobService: ERROR: Constraint violation
+deactivate Database
+
+JobService -> APIGateway: 409 Conflict - Job already processed
+deactivate JobService
+
+APIGateway -> APIClient: 409 Conflict + error details
+deactivate APIGateway
+
+APIClient -> Context: handleApprovalError(error)
+Context -> WebApp: Revert optimistic update
+Context -> WebApp: Show error message
+
+deactivate APIClient
+deactivate Context
+
+WebApp -> Reviewer: Display error: "Job has already been processed"
+deactivate WebApp
+
+== Real-time Updates from Other Users ==
+
+note over NotificationService, WebSocket
+  Concurrent user actions trigger real-time updates
+end note
+
+NotificationService -> WebSocket: broadcast job update from another user
+activate WebSocket
+
+WebSocket -> WebApp: Real-time job update event
+activate WebApp
+
+WebApp -> Context: handleRealTimeUpdate(jobUpdate)
+activate Context
+
+Context -> Context: Merge real-time update with current state
+Context -> WebApp: Update affected job cards
+
+WebApp -> SoundManager: Check if notification sound needed
+activate SoundManager
+
+SoundManager -> SoundManager: Evaluate notification rules
+alt Sound enabled and relevant update
+    SoundManager -> Reviewer: Play notification sound
+else Sound disabled or irrelevant
+    SoundManager -> SoundManager: Skip sound
+end
+
+deactivate SoundManager
+deactivate Context
+
+WebApp -> Reviewer: Show updated job status visually
+deactivate WebApp
+deactivate WebSocket
+
+note as N1
+  Dashboard v4 Job Approval Workflow
+  
+  AI Agent Context:
+  - Complete user interaction flow from dashboard load to job approval
+  - Optimistic updates for immediate UI feedback
+  - Real-time synchronization via WebSocket
+  - Comprehensive error handling with rollback
+  - Sound notifications based on user preferences
+  
+  Key Patterns:
+  - Optimistic UI updates with API confirmation
+  - Transaction-based database operations
+  - Real-time event broadcasting
+  - User preference-based notifications
+  - Graceful error handling with user feedback
+  
+  Technical Implementation:
+  - React Context for state management
+  - Custom hooks for API integration
+  - WebSocket for real-time updates
+  - PostgreSQL transactions for data integrity
+  - Async notification processing
+  
+  User Experience Features:
+  - Immediate visual feedback
+  - Sound notifications (optional)
+  - Real-time status synchronization
+  - Clear error messages
+  - Optimistic UI updates
+end note
+
+@enduml 

@@ -11,7 +11,8 @@ This document outlines the recommended structure and organization for project do
 | `CLAUDE.md` (or `CURSOR.md`) | Cursor-specific tips, bash aliases, red-flag patterns, troubleshooting recipes | Markdown |
 | `CONTRIBUTING.md` | PR rules, branch naming, commit style guidelines | Markdown |
 | `CODE_OF_CONDUCT.md` | Behavior rules for collaborators | Markdown |
-| `.editorconfig` & `.prettier*` | Enforce whitespace/formatting standards for agents | INI / JSON |
+| `.editorconfig` | Enforce whitespace/formatting standards for agents | INI |
+| `.prettierrc` | Code formatting rules and style enforcement | JSON |
 | `LICENSE` | Open source license text | Plain text |
 
 ## 2. `/docs` — Structured Textual References
@@ -19,9 +20,8 @@ This document outlines the recommended structure and organization for project do
 | Sub-folder | Key Files to Generate | Why They Matter for AI |
 |------------|----------------------|----------------------|
 | `requirements/` | `user-stories.md`, `use-cases.md`, `acceptance-criteria.md` | Provides unambiguous "what & why" specifications that AI agents need |
-| `api-specs/` | `openapi.yaml` (REST), `tools.mcp.json` (Model Context Protocol) | Exposes every external "tool" call in machine-readable format |
 | `context/` | `glossary.md`, `style-guide.md`, `decision-log.md` | Keeps tacit knowledge explicit → reduces hallucinations |
-| `examples/` | `sample-test.py`, `sample-service.py` | AI learns fastest from curated examples |
+| `examples/` | `sample-components.md` | AI learns fastest from curated examples and patterns |
 
 ## 3. `/diagrams` — Visual, Machine-Readable Blueprints
 
@@ -30,7 +30,7 @@ This document outlines the recommended structure and organization for project do
 | `architecture/` | `system-c4.puml`, `infra.mmd` | PlantUML / Mermaid (C4 levels 1-4) |
 | `uml/` | `domain-model.puml` (Class), `checkout-sequence.puml` (Sequence) | PlantUML |
 | `flowcharts/` | `order-lifecycle.mmd`, `error-handling.mmd` | Mermaid flowcharts |
-| `ui-mockups/` | `dashboard-mobile.png`, `dashboard-desktop.png`, `dashboard.figma.json` | Images + design-to-code export |
+| `ui-mockups/` | `dashboard-desktop.png`, `dashboard.figma.json` | Images + design-to-code export |
 | `data-models/` | `er-diagram.puml`, `schema.prisma` (or SQL) | PlantUML ER |
 
 > **Tip:** Commit the `.puml`/`.mmd` source files—Cursor can render PNGs later.
@@ -49,18 +49,91 @@ These components deliver the "shared vocabulary" and rich context through ontolo
 
 Generate minimal templates to enable Cursor to wire tests and pipelines from day one:
 
-**Test Files:**
-- `/tests/__init__.py`
-- `/tests/test_placeholder.py`
+**Test Structure:**
+- `/tests/` – Testing framework and test files organized by project structure
 
 **CI/CD:**
-- `/ci/github-actions.yml` (or `azure-pipelines.yml`)
+- `/ci/github-actions.yml` – Continuous integration and deployment automation
 
 ## 6. Optional Developer Experience Folders
 
 Create these folders empty initially; the agent will populate them as needed:
 
-- `/scripts/` – Helper CLI tools
-- `/migrations/` – Database schema evolution
-- `/datasets/` – Sample CSV/JSON for fixtures  
-- `/notebooks/` – Exploratory Jupyter work
+- `/scripts/` – Build helpers and CLI tools for development workflow
+
+## 7. Complete Project Repository Architecture
+
+```
+project-repository/
+├── README.md
+├── project-info.md
+├── CLAUDE.md (or CURSOR.md)
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── .editorconfig
+├── .prettierrc
+├── LICENSE
+│
+├── docs/
+│   ├── requirements/
+│   │   ├── user-stories.md
+│   │   ├── use-cases.md
+│   │   └── acceptance-criteria.md
+│   ├── context/
+│   │   ├── glossary.md
+│   │   ├── style-guide.md
+│   │   └── decision-log.md
+│   └── examples/
+│       └── sample-components.md
+│
+├── diagrams/
+│   ├── architecture/
+│   │   ├── system-c4.puml
+│   │   └── infra.mmd
+│   │
+│   ├── uml/
+│   │   ├── domain-model.puml
+│   │   └── checkout-sequence.puml
+│   │
+│   ├── flowcharts/
+│   │   ├── order-lifecycle.mmd
+│   │   └── error-handling.mmd
+│   │
+│   ├── ui-mockups/
+│   │   ├── dashboard-desktop.png
+│   │   └── dashboard.figma.json
+│   │
+│   └── data-models/
+│       ├── er-diagram.puml
+│       └── schema.prisma
+│
+├── semantic/
+│   ├── fabrication-ontology.ttl
+│   ├── kg.graphml
+│   └── annotations.yml
+│
+├── tests/
+│   └── (testing structure)
+│
+├── ci/
+│   └── github-actions.yml
+│
+└── scripts/
+    └── (build helpers)
+```
+
+### Architecture Notes:
+
+1. **Root Level Files**: Essential configuration and documentation files that AI agents reference first
+2. **docs/**: Structured documentation organized by purpose (requirements, API specs, context, examples)
+3. **diagrams/**: Visual representations in text-based formats that can be version-controlled and AI-readable
+4. **semantic/**: Knowledge layer components for domain understanding and semantic relationships
+5. **tests/ & ci/**: Automation infrastructure for quality assurance and deployment
+6. **Optional Folders**: Developer experience folders that start empty and grow organically
+
+This architecture optimizes for AI coding agent effectiveness by providing:
+- **Machine-readable formats** (YAML, JSON, PlantUML, Mermaid)
+- **Clear separation of concerns** (documentation, diagrams, tests, etc.)
+- **Semantic context** (ontologies, glossaries, decision logs)
+- **Automation hooks** (CI/CD, testing frameworks)
+- **Extensibility** (optional folders for future needs)

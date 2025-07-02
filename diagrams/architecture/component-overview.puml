@@ -1,0 +1,99 @@
+@startuml component-overview
+!theme plain
+title Dashboard v4 - Component Diagram (C4 Level 3: Web Application)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Dashboard v4 Web Application Components
+' AI Agent Context: Internal component structure and responsibilities within the web application
+
+LAYOUT_WITH_LEGEND()
+
+Container(api_gateway, "API Gateway", "Next.js API Routes", "Handles API requests and authentication")
+Container(notification_service, "Notification Service", "WebSocket", "Real-time notifications")
+
+Container_Boundary(web_app, "Dashboard Web Application") {
+    Component(dashboard_page, "Dashboard Page", "Next.js Page", "Main dashboard route and layout orchestration")
+    Component(job_list, "Job List Component", "React Component", "Displays filtered job cards with status-based organization")
+    Component(job_card, "Job Card Component", "React Component", "Individual job display with approve/reject actions")
+    Component(status_tabs, "Status Tabs Component", "React Component", "Job status filtering and count display")
+    Component(approval_modal, "Approval Modal", "React Component", "Job approval interface with notes input")
+    Component(rejection_modal, "Rejection Modal", "React Component", "Job rejection interface with reason requirement")
+    Component(sound_toggle, "Sound Toggle", "React Component", "Audio notification preference management")
+    Component(last_updated, "Last Updated", "React Component", "Real-time timestamp display for job list refresh")
+    
+    Component(dashboard_context, "Dashboard Context", "React Context", "Centralized state management for job data and filters")
+    Component(api_client, "API Client", "Custom Hook", "HTTP client for job operations with error handling")
+    Component(notification_hook, "Notification Hook", "Custom Hook", "WebSocket connection and real-time update handling")
+    Component(sound_manager, "Sound Manager", "Custom Hook", "Audio notification playback and preference management")
+    Component(local_storage, "Local Storage Hook", "Custom Hook", "Persistent user preferences and state management")
+    
+    Component(job_service, "Job Service", "Service Layer", "Business logic for job operations and validation")
+    Component(filter_service, "Filter Service", "Service Layer", "Job filtering and sorting logic")
+    Component(validation_service, "Validation Service", "Service Layer", "Form validation and data integrity checks")
+}
+
+' Page to component relationships
+Rel(dashboard_page, job_list, "Renders", "Props")
+Rel(dashboard_page, status_tabs, "Renders", "Props")
+Rel(dashboard_page, sound_toggle, "Renders", "Props")
+Rel(dashboard_page, last_updated, "Renders", "Props")
+
+' Component hierarchy
+Rel(job_list, job_card, "Renders multiple", "Props")
+Rel(job_card, approval_modal, "Opens on approve", "State")
+Rel(job_card, rejection_modal, "Opens on reject", "State")
+
+' Context and state management
+Rel(dashboard_page, dashboard_context, "Provides context", "React Context")
+Rel(job_list, dashboard_context, "Consumes job data", "useContext")
+Rel(job_card, dashboard_context, "Consumes job actions", "useContext")
+Rel(status_tabs, dashboard_context, "Consumes filter state", "useContext")
+
+' Custom hooks integration
+Rel(dashboard_context, api_client, "Uses for data fetching", "Custom Hook")
+Rel(dashboard_context, notification_hook, "Uses for real-time updates", "Custom Hook")
+Rel(sound_toggle, sound_manager, "Uses for audio control", "Custom Hook")
+Rel(dashboard_context, local_storage, "Uses for persistence", "Custom Hook")
+
+' Service layer integration
+Rel(api_client, job_service, "Delegates business logic", "Function calls")
+Rel(dashboard_context, filter_service, "Uses for filtering", "Function calls")
+Rel(approval_modal, validation_service, "Validates input", "Function calls")
+Rel(rejection_modal, validation_service, "Validates input", "Function calls")
+
+' External integrations
+Rel(api_client, api_gateway, "Makes HTTP requests", "JSON/HTTPS")
+Rel(notification_hook, notification_service, "Receives real-time updates", "WebSocket")
+
+note as N1
+  Dashboard v4 Web Application Components
+  
+  AI Agent Context:
+  - React component hierarchy with clear separation of concerns
+  - Context-based state management for global application state
+  - Custom hooks for cross-cutting concerns (API, notifications, storage)
+  - Service layer for business logic separation from UI components
+  
+  Key Patterns:
+  - Container/Presentation component pattern
+  - Context + Custom Hooks for state management
+  - Service layer abstraction for business logic
+  - Modal components for user interactions
+  - Real-time updates via WebSocket integration
+  
+  Component Responsibilities:
+  - UI Components: Pure presentation and user interaction
+  - Context: Global state management and data flow
+  - Custom Hooks: Reusable stateful logic
+  - Services: Business logic and data transformation
+  
+  Technology Implementation:
+  - Next.js for page routing and SSR
+  - React Hooks for component state
+  - Context API for global state
+  - Custom hooks for complex logic reuse
+  - WebSocket for real-time communication
+end note
+
+@enduml 

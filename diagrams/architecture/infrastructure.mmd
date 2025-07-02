@@ -1,0 +1,142 @@
+%%{init: {'theme':'neutral', 'themeVariables': {'primaryColor':'#0066cc','primaryTextColor':'#333','primaryBorderColor':'#0066cc','lineColor':'#333333'}}}%%
+graph TB
+    %% Dashboard v4 - Infrastructure Architecture
+    %% AI Agent Context: Deployment and hosting infrastructure
+
+    subgraph "User Access Layer"
+        U1[Mobile Users]
+        U2[Desktop Users]
+        U3[Tablet Users]
+    end
+
+    subgraph "CDN & Load Balancing"
+        CDN[CloudFlare CDN<br/>Global Edge Locations]
+        LB[Load Balancer<br/>SSL Termination]
+    end
+
+    subgraph "Application Tier - Vercel"
+        subgraph "Production Environment"
+            APP1[Next.js App Instance 1<br/>Auto-scaling]
+            APP2[Next.js App Instance 2<br/>Auto-scaling]
+            APP3[Next.js App Instance N<br/>Auto-scaling]
+        end
+        
+        subgraph "Staging Environment"
+            STAGE[Staging Instance<br/>Preview Deployments]
+        end
+    end
+
+    subgraph "API & Services Layer"
+        subgraph "Serverless Functions"
+            API1[Job Management API<br/>Vercel Functions]
+            API2[Notification API<br/>Vercel Functions]
+            API3[File Upload API<br/>Vercel Functions]
+        end
+        
+        WS[WebSocket Service<br/>Real-time Updates<br/>Dedicated Server]
+    end
+
+    subgraph "Data Layer - AWS"
+        subgraph "Primary Database"
+            RDS[PostgreSQL RDS<br/>Multi-AZ Deployment<br/>Automated Backups]
+        end
+        
+        subgraph "Caching Layer"
+            REDIS[Redis ElastiCache<br/>Cluster Mode<br/>Session Storage]
+        end
+        
+        subgraph "File Storage"
+            S3[S3 Bucket<br/>Job Attachments<br/>Versioned Storage]
+        end
+    end
+
+    subgraph "External Services"
+        AUTH[LDAP/AD Server<br/>User Authentication]
+        EMAIL[SendGrid<br/>Email Notifications]
+        SMS[Twilio<br/>SMS Notifications]
+        AUDIT[Audit Service<br/>Compliance Logging]
+    end
+
+    subgraph "Monitoring & Observability"
+        SENTRY[Sentry<br/>Error Tracking]
+        VERCEL_ANALYTICS[Vercel Analytics<br/>Performance Monitoring]
+        DATADOG[DataDog<br/>Infrastructure Monitoring]
+    end
+
+    subgraph "Development Tools"
+        GITHUB[GitHub<br/>Source Control<br/>CI/CD Actions]
+        FIGMA[Figma<br/>Design System]
+    end
+
+    %% User connections
+    U1 --> CDN
+    U2 --> CDN
+    U3 --> CDN
+
+    %% CDN and Load Balancing
+    CDN --> LB
+    LB --> APP1
+    LB --> APP2
+    LB --> APP3
+
+    %% Application to API connections
+    APP1 --> API1
+    APP1 --> API2
+    APP1 --> API3
+    APP2 --> API1
+    APP2 --> API2
+    APP2 --> API3
+    APP3 --> API1
+    APP3 --> API2
+    APP3 --> API3
+
+    %% Real-time connections
+    APP1 -.->|WebSocket| WS
+    APP2 -.->|WebSocket| WS
+    APP3 -.->|WebSocket| WS
+
+    %% API to Data Layer
+    API1 --> RDS
+    API1 --> REDIS
+    API2 --> REDIS
+    API3 --> S3
+
+    %% External service integrations
+    API1 --> AUTH
+    API2 --> EMAIL
+    API2 --> SMS
+    API1 --> AUDIT
+
+    %% Staging environment
+    STAGE --> API1
+    STAGE --> API2
+    STAGE --> API3
+
+    %% Monitoring connections
+    APP1 --> SENTRY
+    APP1 --> VERCEL_ANALYTICS
+    RDS --> DATADOG
+    REDIS --> DATADOG
+    WS --> DATADOG
+
+    %% Development workflow
+    GITHUB --> APP1
+    GITHUB --> APP2
+    GITHUB --> APP3
+    GITHUB --> STAGE
+    FIGMA -.->|Design Tokens| GITHUB
+
+    %% Styling
+    classDef userClass fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
+    classDef appClass fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+    classDef dataClass fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    classDef externalClass fill:#fce4ec,stroke:#e91e63,stroke-width:2px
+    classDef monitoringClass fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    classDef devClass fill:#e0f2f1,stroke:#009688,stroke-width:2px
+
+    class U1,U2,U3 userClass
+    class APP1,APP2,APP3,STAGE,API1,API2,API3,WS userClass
+    class RDS,REDIS,S3 dataClass
+    class AUTH,EMAIL,SMS,AUDIT externalClass
+    class SENTRY,VERCEL_ANALYTICS,DATADOG monitoringClass
+    class GITHUB,FIGMA devClass 

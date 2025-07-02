@@ -1,0 +1,54 @@
+@startuml system-context
+!theme plain
+title Dashboard v4 - System Context (C4 Level 1)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+' Dashboard v4 System Context
+' AI Agent Context: High-level system boundaries and external interactions
+
+LAYOUT_WITH_LEGEND()
+
+Person(reviewer, "Job Reviewer", "Reviews and approves/rejects submitted jobs")
+Person(admin, "System Administrator", "Manages system configuration and monitors performance")
+Person(submitter, "Job Submitter", "Submits jobs for review and approval")
+
+System(dashboard, "Dashboard v4", "Job management and approval system with real-time status tracking")
+
+System_Ext(notification_service, "Notification Service", "Sends email/SMS notifications for job status changes")
+System_Ext(audit_system, "Audit System", "Logs all job actions and status changes for compliance")
+System_Ext(user_directory, "User Directory", "LDAP/AD service for user authentication and authorization")
+System_Ext(file_storage, "File Storage", "Cloud storage for job attachments and documents")
+
+' User interactions
+Rel(reviewer, dashboard, "Reviews jobs, approves/rejects", "HTTPS")
+Rel(admin, dashboard, "Configures system, monitors", "HTTPS")
+Rel(submitter, dashboard, "Submits jobs, checks status", "HTTPS")
+
+' System integrations
+Rel(dashboard, notification_service, "Triggers notifications", "REST API")
+Rel(dashboard, audit_system, "Logs job actions", "REST API")
+Rel(dashboard, user_directory, "Authenticates users", "LDAP")
+Rel(dashboard, file_storage, "Stores/retrieves files", "S3 API")
+
+' External system interactions
+Rel(notification_service, reviewer, "Sends job notifications", "Email/SMS")
+Rel(notification_service, submitter, "Sends status updates", "Email/SMS")
+
+note as N1
+  Dashboard v4 System Context
+  
+  AI Agent Context:
+  - Central job management system
+  - Multi-user role support (reviewer, admin, submitter)
+  - External service integrations for notifications and audit
+  - Web-based interface with HTTPS access
+  
+  Key Responsibilities:
+  - Job lifecycle management (pending → approved/rejected)
+  - Real-time status updates and filtering
+  - User role-based access control
+  - Integration with external services for enhanced functionality
+end note
+
+@enduml 

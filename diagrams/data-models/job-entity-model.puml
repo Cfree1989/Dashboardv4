@@ -1,0 +1,241 @@
+@startuml job-entity-model
+!theme plain
+title Dashboard v4 - Job Entity Relationship Model
+
+' Job Management Database Schema
+' AI Agent Context: Database design and entity relationships
+
+skinparam backgroundColor white
+skinparam class {
+    BackgroundColor lightgray
+    BorderColor darkblue
+}
+
+entity "jobs" as jobs {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * title: VARCHAR(255)
+  * description: TEXT
+  * status: job_status_enum
+  * priority: priority_enum
+  * created_at: TIMESTAMP
+  * updated_at: TIMESTAMP
+  * assigned_to: VARCHAR(36) [FK]
+  * submitted_by: VARCHAR(36) [FK]
+  --
+  due_date: TIMESTAMP
+  estimated_hours: DECIMAL(5,2)
+  actual_hours: DECIMAL(5,2)
+  tags: VARCHAR(500)
+  metadata: JSONB
+}
+
+entity "users" as users {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * username: VARCHAR(100) [UNIQUE]
+  * email: VARCHAR(255) [UNIQUE]
+  * full_name: VARCHAR(255)
+  * role: user_role_enum
+  * department: VARCHAR(100)
+  * is_active: BOOLEAN
+  * created_at: TIMESTAMP
+  * updated_at: TIMESTAMP
+  --
+  last_login_at: TIMESTAMP
+  password_hash: VARCHAR(255)
+  preferences: JSONB
+}
+
+entity "job_notes" as job_notes {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * job_id: VARCHAR(36) [FK]
+  * content: TEXT
+  * author: VARCHAR(36) [FK]
+  * note_type: note_type_enum
+  * created_at: TIMESTAMP
+  --
+  updated_at: TIMESTAMP
+  is_private: BOOLEAN
+  metadata: JSONB
+}
+
+entity "job_status_changes" as job_status_changes {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * job_id: VARCHAR(36) [FK]
+  * from_status: job_status_enum
+  * to_status: job_status_enum
+  * changed_by: VARCHAR(36) [FK]
+  * changed_at: TIMESTAMP
+  --
+  reason: TEXT
+  automated: BOOLEAN
+  metadata: JSONB
+}
+
+entity "job_attachments" as job_attachments {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * job_id: VARCHAR(36) [FK]
+  * file_name: VARCHAR(255)
+  * file_size: BIGINT
+  * mime_type: VARCHAR(100)
+  * storage_url: VARCHAR(500)
+  * uploaded_by: VARCHAR(36) [FK]
+  * uploaded_at: TIMESTAMP
+  --
+  checksum: VARCHAR(64)
+  is_deleted: BOOLEAN
+  metadata: JSONB
+}
+
+entity "user_sessions" as user_sessions {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * user_id: VARCHAR(36) [FK]
+  * session_token: VARCHAR(255) [UNIQUE]
+  * created_at: TIMESTAMP
+  * expires_at: TIMESTAMP
+  --
+  ip_address: INET
+  user_agent: TEXT
+  is_active: BOOLEAN
+}
+
+entity "audit_logs" as audit_logs {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * entity_type: VARCHAR(50)
+  * entity_id: VARCHAR(36)
+  * action: VARCHAR(50)
+  * performed_by: VARCHAR(36) [FK]
+  * performed_at: TIMESTAMP
+  --
+  old_values: JSONB
+  new_values: JSONB
+  ip_address: INET
+  user_agent: TEXT
+}
+
+entity "job_statistics" as job_statistics {
+  * **id**: VARCHAR(36) [PK]
+  --
+  * calculated_at: TIMESTAMP
+  * total_jobs: INTEGER
+  * pending_jobs: INTEGER
+  * approved_jobs: INTEGER
+  * rejected_jobs: INTEGER
+  * completed_jobs: INTEGER
+  --
+  avg_processing_time: DECIMAL(10,2)
+  overdue_jobs: INTEGER
+  metadata: JSONB
+}
+
+' Enums
+note top of jobs
+  **job_status_enum**
+  - PENDING
+  - APPROVED
+  - REJECTED
+  - COMPLETED
+  - ON_HOLD
+  - CANCELLED
+  
+  **priority_enum**
+  - LOW
+  - MEDIUM
+  - HIGH
+  - URGENT
+end note
+
+note top of job_notes
+  **note_type_enum**
+  - COMMENT
+  - APPROVAL_NOTE
+  - REJECTION_REASON
+  - STATUS_CHANGE
+  - SYSTEM_NOTE
+end note
+
+note top of users
+  **user_role_enum**
+  - ADMIN
+  - REVIEWER
+  - SUBMITTER
+  - VIEWER
+end note
+
+' Relationships
+jobs ||--o{ job_notes : "job_id"
+jobs ||--o{ job_status_changes : "job_id"
+jobs ||--o{ job_attachments : "job_id"
+jobs }o--|| users : "assigned_to"
+jobs }o--|| users : "submitted_by"
+
+job_notes }o--|| users : "author"
+job_status_changes }o--|| users : "changed_by"
+job_attachments }o--|| users : "uploaded_by"
+
+users ||--o{ user_sessions : "user_id"
+users ||--o{ audit_logs : "performed_by"
+
+' Indexes
+note bottom of jobs
+  **Indexes:**
+  - idx_jobs_status (status)
+  - idx_jobs_priority (priority)
+  - idx_jobs_assigned_to (assigned_to)
+  - idx_jobs_submitted_by (submitted_by)
+  - idx_jobs_created_at (created_at)
+  - idx_jobs_due_date (due_date)
+  - idx_jobs_tags (tags) [GIN]
+end note
+
+note bottom of job_status_changes
+  **Indexes:**
+  - idx_status_changes_job_id (job_id)
+  - idx_status_changes_changed_at (changed_at)
+  - idx_status_changes_changed_by (changed_by)
+end note
+
+note bottom of audit_logs
+  **Indexes:**
+  - idx_audit_entity (entity_type, entity_id)
+  - idx_audit_performed_at (performed_at)
+  - idx_audit_performed_by (performed_by)
+end note
+
+note as N1
+  Dashboard v4 Database Schema
+  
+  AI Agent Context:
+  - PostgreSQL database with UUID primary keys
+  - JSONB columns for flexible metadata storage
+  - Comprehensive audit trail through status changes and logs
+  - Optimized indexes for common query patterns
+  
+  Key Design Decisions:
+  - UUIDs for distributed system compatibility
+  - Enum types for controlled vocabularies
+  - JSONB for extensible metadata
+  - Soft deletes for attachments
+  - Session management for security
+  
+  Performance Considerations:
+  - Indexes on commonly filtered columns
+  - GIN index on tags for full-text search
+  - Partitioning strategy for audit_logs (by date)
+  - Connection pooling and query optimization
+  
+  Security Features:
+  - Role-based access control
+  - Session token management
+  - IP address tracking
+  - Comprehensive audit logging
+  - Data encryption at rest
+end note
+
+@enduml 

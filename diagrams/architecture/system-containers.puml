@@ -1,0 +1,71 @@
+@startuml system-containers
+!theme plain
+title Dashboard v4 - Container Diagram (C4 Level 2)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Dashboard v4 Container Architecture
+' AI Agent Context: Internal system structure and container responsibilities
+
+LAYOUT_WITH_LEGEND()
+
+Person(reviewer, "Job Reviewer", "Reviews and approves/rejects jobs")
+Person(admin, "System Administrator", "Manages system configuration")
+
+System_Boundary(dashboard_system, "Dashboard v4") {
+    Container(web_app, "Dashboard Web Application", "Next.js, React, TypeScript", "Provides job management interface with real-time updates")
+    Container(api_gateway, "API Gateway", "Next.js API Routes", "Handles all API requests, authentication, and routing")
+    Container(job_service, "Job Management Service", "Node.js, Business Logic", "Core job processing, status management, and workflow orchestration")
+    Container(notification_service, "Notification Service", "Node.js, WebSocket", "Manages real-time notifications and sound alerts")
+    ContainerDb(main_database, "Main Database", "PostgreSQL", "Stores job data, user information, and audit logs")
+    ContainerDb(cache, "Redis Cache", "Redis", "Caches job status, user sessions, and real-time data")
+}
+
+System_Ext(notification_ext, "External Notification Service", "Email/SMS notifications")
+System_Ext(user_directory, "User Directory", "LDAP/AD authentication")
+System_Ext(file_storage, "File Storage", "Document storage")
+
+' User to system interactions
+Rel(reviewer, web_app, "Uses", "HTTPS")
+Rel(admin, web_app, "Manages", "HTTPS")
+
+' Internal container relationships
+Rel(web_app, api_gateway, "Makes API calls", "JSON/HTTPS")
+Rel(api_gateway, job_service, "Forwards requests", "JSON/HTTP")
+Rel(api_gateway, notification_service, "Triggers notifications", "JSON/HTTP")
+
+Rel(job_service, main_database, "Reads from and writes to", "SQL/TCP")
+Rel(job_service, cache, "Caches data", "Redis Protocol")
+
+Rel(notification_service, cache, "Stores real-time state", "Redis Protocol")
+Rel(notification_service, web_app, "Sends real-time updates", "WebSocket")
+
+' External system integrations
+Rel(api_gateway, user_directory, "Authenticates", "LDAP")
+Rel(job_service, notification_ext, "Sends notifications", "REST API")
+Rel(job_service, file_storage, "Stores attachments", "S3 API")
+
+note as N1
+  Dashboard v4 Container Architecture
+  
+  AI Agent Context:
+  - Frontend: Next.js React application with TypeScript
+  - API Layer: Next.js API routes handling authentication and routing
+  - Business Logic: Node.js service managing job workflows
+  - Real-time: WebSocket-based notification system
+  - Data: PostgreSQL for persistence, Redis for caching
+  
+  Key Patterns:
+  - Separation of concerns between UI, API, and business logic
+  - Caching strategy for performance optimization
+  - Real-time updates via WebSocket connections
+  - External service integration through dedicated service layer
+  
+  Technology Choices:
+  - Next.js for full-stack React development
+  - PostgreSQL for ACID-compliant job data storage
+  - Redis for high-performance caching and sessions
+  - WebSocket for real-time bidirectional communication
+end note
+
+@enduml 

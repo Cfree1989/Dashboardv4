@@ -1,0 +1,109 @@
+{
+  "sampleJobs": [
+    {
+      "id": "job-001",
+      "title": "Review Marketing Campaign Assets",
+      "description": "Review and approve the Q1 marketing campaign materials including graphics, copy, and video content.",
+      "status": "pending",
+      "priority": "high",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "updatedAt": "2024-01-15T10:00:00Z",
+      "assignedTo": "John Doe",
+      "notes": []
+    },
+    {
+      "id": "job-002", 
+      "title": "Update Website Content",
+      "description": "Update the homepage content with new product information and pricing.",
+      "status": "approved",
+      "priority": "medium",
+      "createdAt": "2024-01-14T14:30:00Z",
+      "updatedAt": "2024-01-15T09:15:00Z",
+      "assignedTo": "Jane Smith",
+      "notes": [
+        {
+          "id": "note-001",
+          "content": "Approved with minor text changes requested",
+          "author": "Jane Smith",
+          "createdAt": "2024-01-15T09:15:00Z"
+        }
+      ]
+    },
+    {
+      "id": "job-003",
+      "title": "Bug Fix: Login Issue",
+      "description": "Fix the authentication bug that prevents users from logging in with special characters in passwords.",
+      "status": "rejected",
+      "priority": "urgent",
+      "createdAt": "2024-01-13T16:45:00Z",
+      "updatedAt": "2024-01-14T11:20:00Z",
+      "assignedTo": "Bob Wilson",
+      "notes": [
+        {
+          "id": "note-002",
+          "content": "Needs more investigation before proceeding",
+          "author": "Bob Wilson",
+          "createdAt": "2024-01-14T11:20:00Z"
+        }
+      ]
+    },
+    {
+      "id": "job-004",
+      "title": "Database Migration",
+      "description": "Migrate customer data from legacy system to new database structure.",
+      "status": "completed",
+      "priority": "high",
+      "createdAt": "2024-01-10T08:00:00Z",
+      "updatedAt": "2024-01-12T17:30:00Z",
+      "assignedTo": "Alice Johnson",
+      "notes": [
+        {
+          "id": "note-003",
+          "content": "Migration completed successfully",
+          "author": "Alice Johnson",
+          "createdAt": "2024-01-12T17:30:00Z"
+        }
+      ]
+    },
+    {
+      "id": "job-005",
+      "title": "Code Review: API Updates",
+      "description": "Review the new API endpoints for the mobile application integration.",
+      "status": "pending",
+      "priority": "medium",
+      "createdAt": "2024-01-16T12:00:00Z",
+      "updatedAt": "2024-01-16T12:00:00Z",
+      "assignedTo": "Charlie Brown",
+      "notes": []
+    }
+  ],
+  
+  "jobCounts": {
+    "all": 5,
+    "pending": 2,
+    "approved": 1,
+    "rejected": 1,
+    "completed": 1
+  },
+  
+  "users": [
+    {
+      "id": "user-001",
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "role": "reviewer"
+    },
+    {
+      "id": "user-002",
+      "name": "Jane Smith", 
+      "email": "jane.smith@example.com",
+      "role": "approver"
+    },
+    {
+      "id": "user-003",
+      "name": "Bob Wilson",
+      "email": "bob.wilson@example.com",
+      "role": "developer"
+    }
+  ]
+} 
