@@ -2,7 +2,7 @@
 !theme plain
 title Dashboard v4 - Component Diagram (C4 Level 3: Web Application)
 
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/v2.7.0/C4_Component.puml
 
 ' Dashboard v4 Web Application Components
 ' AI Agent Context: Internal component structure and responsibilities within the web application
