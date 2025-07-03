@@ -1,0 +1,181 @@
+graph TB
+    %% Entry Point
+    A[🚀 Next.js Application - Project Information/v0/] --> B[⚙️ App Router - Modern React Framework]
+    
+    %% Core Application Structure
+    B --> C[🏛️ Dashboard v4 Application Instance]
+    
+    subgraph "Configuration Layer"
+        C --> D[📋 Configuration Management]
+        D --> D1[🔧 next.config.mjs - Next.js Settings]
+        D --> D2[🌍 Environment Variables - .env files]
+        D --> D3[📁 TypeScript Configuration - tsconfig.json]
+        D --> D4[🎨 Tailwind Config - tailwind.config.ts]
+        D --> D5[🔗 Component Library - components.json]
+    end
+    
+    subgraph "React Ecosystem"
+        C --> E[🔌 Framework Integration]
+        E --> E1[⚛️ React Components - components/]
+        E1 --> E2[🎯 TypeScript Types - types/]
+        E1 --> E3[🪝 Custom Hooks - hooks/]
+        E1 --> E4[🛠️ Utilities - lib/]
+    end
+    
+    subgraph "TypeScript Types Layer"
+        C --> F[📊 Type Definitions]
+        F --> F1[💼 types/job.ts - Core Job Interface]
+        F --> F2[📝 Component Prop Types]
+        F1 --> F3[🎯 Job Interface - String ID]
+        F2 --> F4[📋 Component Props - React Types]
+        F3 -.->|Used in Components| F4
+        
+        F3 --> F31[👤 Student Information Fields]
+        F3 --> F32[📄 File Metadata Fields]
+        F3 --> F33[🔄 Status Workflow Fields]
+        F3 --> F34[🖨️ Printer Configuration Fields]
+        F3 --> F35[💰 Cost Calculation Fields]
+        F3 --> F36[✅ Staff Review Fields]
+    end
+    
+    subgraph "React Components - UI Layer"
+        C --> G[🛣️ Component Architecture]
+        G --> G1[📤 Dashboard Components - components/dashboard/]
+        G --> G2[📊 UI Components - components/ui/]
+        
+        G1 --> G11[📋 JobCard - Individual Job Display]
+        G1 --> G12[✅ ApprovalModal - Job Approval Interface]
+        G1 --> G13[👀 StatusTabs - Job Filtering]
+        G1 --> G14[🔊 SoundToggle - Audio Notifications]
+        G1 --> G15[🕐 LastUpdated - Refresh Indicator]
+        
+        G2 --> G21[📈 Button - Reusable Actions]
+        G2 --> G22[🔄 Modal - Dialog Interface]
+        G2 --> G23[📁 Card - Content Container]
+        G2 --> G24[💰 Badge - Status Indicators]
+        G2 --> G25[🏷️ Input - Form Controls]
+    end
+    
+    subgraph "State Management & Hooks"
+        C --> H[⚡ React Context & Hooks]
+        H --> H1[📁 dashboard-context.tsx - Global State]
+        
+        H1 --> H11[📤 Job Data Management]
+        H1 --> H12[🔍 Filter State Management]
+        H1 --> H13[📏 Sound Notification State]
+        H1 --> H14[🖼️ Loading State Management]
+        H1 --> H15[📦 Error State Handling]
+        H1 --> H16[🔄 Real-time Updates]
+        H1 --> H17[🗑️ Cache Management]
+    end
+    
+    subgraph "Testing Infrastructure"
+        C --> I[🧪 Testing Framework]
+        I --> I1[🏗️ tests/config/ - Test Configuration]
+        I --> I2[🔗 tests/unit/ - Unit Tests]
+        I --> I3[👨‍🎓 tests/integration/ - Integration Tests]
+        I --> I4[👩‍💼 tests/e2e/ - End-to-End Tests]
+        
+        I1 --> I11[📝 jest.config.js - Jest Setup]
+        I1 --> I12[📊 test-utils.tsx - Custom Utilities]
+        I1 --> I13[📊 babel.config.js - Transformation]
+        
+        I2 --> I21[📈 JobCard.test.tsx - Component Tests]
+        I2 --> I22[🔐 Accessibility Tests]
+        I2 --> I23[⚙️ Type Safety Tests]
+    end
+    
+    subgraph "Documentation & Tooling"
+        C --> J[📦 Project Documentation]
+        J --> J1[🎨 docs/ - Structured Documentation]
+        J --> J2[🔊 diagrams/ - Visual Documentation]
+        J --> J3[🖼️ semantic/ - Knowledge Layer]
+        J --> J4[📱 scripts/ - Development Tools]
+        J --> J5[⚙️ ci/ - Continuous Integration]
+    end
+    
+    subgraph "Mock Data & UI Mockups"
+        C --> K[🗂️ Development Assets]
+        K --> K1[📤 Project Information/v0/ - UI Mockups]
+        K --> K2[⏳ Mock Job Data - Test Data]
+        K --> K3[✅ Component Prototypes - v0.dev Generated]
+        K --> K4[🖨️ Style System - Tailwind + shadcn/ui]
+        K --> K5[✔️ Type Definitions - TypeScript Interfaces]
+        K --> K6[💰 Static Assets - public/ directory]
+        K --> K7[🖼️ UI Images - diagrams/ui-mockups/]
+        K --> K8[📋 Configuration Files - Next.js setup]
+    end
+    
+    subgraph "Utility Functions"
+        C --> U[🛠️ Utility Helpers]
+        U --> U1[🎭 Template Filters Registry]
+        U1 --> U2[🖨️ format_printer_name - Display Formatting]
+        U1 --> U3[🎨 format_color_name - Material Colors]
+        U1 --> U4[🏫 format_discipline_name - Academic Departments]
+        U1 --> U5[🕐 format_local_datetime - Time Display]
+        U1 --> U6[📅 detailed_local_datetime - Extended Time]
+    end
+    
+    %% Data Flow Connections
+    G11 -.->|Displays Job Data| H11
+    H11 -.->|Manages State| K2
+    H11 -.->|Uses Type Definitions| F3
+    F3 -.->|Typed Props| F4
+    G12 -.->|Approval Actions| H11
+    G13 -.->|Filter Jobs| H12
+    H16 -.->|Real-time Updates| K3
+    K3 -.->|Component Rendering| G11
+    I21 -.->|Tests Components| G11
+    I22 -.->|Accessibility Testing| G11
+    
+    %% External Dependencies
+    subgraph "External Systems"
+        EXT1[🗄️ Node.js Runtime Environment]
+        EXT2[💾 NPM Package Registry]
+        EXT3[🎨 Tailwind CSS Framework]
+        EXT4[📧 React Testing Library]
+        EXT5[🌐 Web Browser Clients]
+        EXT6[🔧 Jest Testing Framework]
+        EXT7[⚛️ React & Next.js]
+    end
+    
+    EXT1 -.->|Runtime Environment| C
+    EXT2 -.->|Package Dependencies| E1
+    EXT3 -.->|CSS Styling| K4
+    EXT4 -.->|Component Testing| I2
+    EXT5 -.->|Browser Rendering| G
+    EXT6 -.->|Test Execution| I
+    EXT7 -.->|Framework Foundation| B
+    
+    %% Job Lifecycle Visualization
+    subgraph "📋 Job Status Workflow Pipeline (UI Only)"
+        S1[📤 UPLOADED - Mock Data State] --> S2[⏳ PENDING - Awaiting Review UI]
+        S2 --> S3[✅ READYTOPRINT - Approved UI State]
+        S3 --> S4[🖨️ PRINTING - In Progress UI]
+        S4 --> S5[✔️ COMPLETED - Finished UI State]
+        S5 --> S6[💰 PAID_PICKED_UP - Final UI State]
+    end
+    
+    %% Development Access Patterns
+    subgraph "👥 Development Access Patterns"
+        UI1[👨‍🎓 Frontend Developers - Component Development]
+        UI2[👩‍💼 QA Engineers - Testing & Validation]
+        UI3[👔 DevOps - Build & Deployment]
+        UI4[🤖 AI Agents - Code Generation & Analysis]
+    end
+    
+    UI1 -.->|Develop Components| G1
+    UI2 -.->|Run Tests| I
+    UI3 -.->|Build & Deploy| J5
+    UI4 -.->|Analyze Documentation| J
+    UI1 -.->|Create UI Mockups| K1
+    UI2 -.->|Write Unit Tests| I2
+    
+    %% Styling for Visual Hierarchy
+    style A fill:#ff6b6b,stroke:#d63031,stroke-width:3px
+    style F3 fill:#74b9ff,stroke:#0984e3,stroke-width:2px
+    style K fill:#55a3ff,stroke:#2d3436,stroke-width:2px
+    style G fill:#fdcb6e,stroke:#e17055,stroke-width:2px
+    style H fill:#a29bfe,stroke:#6c5ce7,stroke-width:2px
+    style I fill:#fd79a8,stroke:#e84393,stroke-width:2px
+    style U fill:#00b894,stroke:#00a085,stroke-width:2px

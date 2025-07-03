@@ -1,44 +1,44 @@
-# 3D Print System Codebase Visualization
+# Dashboard v4 Codebase Visualization
 
 ```mermaid
 graph TB
     %% Entry Point
-    A[🚀 app.py - Application Entry Point] --> B[⚙️ create_app function - Flask Factory Pattern]
+    A[🚀 Next.js Application - Project Information/v0/] --> B[⚙️ App Router - Modern React Framework]
     
     %% Core Application Structure
-    B --> C[🏛️ Flask Application Instance]
+    B --> C[🏛️ Dashboard v4 Application Instance]
     
     subgraph "Configuration Layer"
         C --> D[📋 Configuration Management]
-        D --> D1[🔧 config.py - App Settings]
-        D --> D2[🌍 Environment Variables - .env file]
-        D --> D3[📁 Storage Directories Auto-Creation]
-        D --> D4[🔐 Secret Key Management]
-        D --> D5[🗄️ Database Connection String]
+        D --> D1[🔧 next.config.mjs - Next.js Settings]
+        D --> D2[🌍 Environment Variables - .env files]
+        D --> D3[📁 TypeScript Configuration - tsconfig.json]
+        D --> D4[🎨 Tailwind Config - tailwind.config.ts]
+        D --> D5[🔗 Component Library - components.json]
     end
     
-    subgraph "Flask Extensions"
-        C --> E[🔌 Extensions Integration]
-        E --> E1[📄 extensions.py - Extension Registry]
-        E1 --> E2[🗃️ SQLAlchemy Database ORM]
-        E1 --> E3[🔄 Flask-Migrate Schema Management]
-        E1 --> E4[🎨 Jinja2 Template Engine]
+    subgraph "React Ecosystem"
+        C --> E[🔌 Framework Integration]
+        E --> E1[⚛️ React Components - components/]
+        E1 --> E2[🎯 TypeScript Types - types/]
+        E1 --> E3[🪝 Custom Hooks - hooks/]
+        E1 --> E4[🛠️ Utilities - lib/]
     end
     
-    subgraph "Data Models Layer"
-        C --> F[📊 Data Models]
-        F --> F1[💼 models/job.py - Core Job Entity]
-        F --> F2[📝 models/event.py - Audit Trail]
-        F1 --> F3[🎯 Job Model - UUID Primary Key]
-        F2 --> F4[📋 Event Model - Status Changes]
-        F3 -.->|One-to-Many Relationship| F4
+    subgraph "TypeScript Types Layer"
+        C --> F[📊 Type Definitions]
+        F --> F1[💼 types/job.ts - Core Job Interface]
+        F --> F2[📝 Component Prop Types]
+        F1 --> F3[🎯 Job Interface - String ID]
+        F2 --> F4[📋 Component Props - React Types]
+        F3 -.->|Used in Components| F4
         
         F3 --> F31[👤 Student Information Fields]
         F3 --> F32[📄 File Metadata Fields]
         F3 --> F33[🔄 Status Workflow Fields]
         F3 --> F34[🖨️ Printer Configuration Fields]
         F3 --> F35[💰 Cost Calculation Fields]
-        F3 --> F36[✅ Confirmation System Fields]
+        F3 --> F36[✅ Staff Review Fields]
     end
     
     subgraph "Route Handlers - Controllers"
@@ -179,25 +179,26 @@ graph TB
 
 ### Core Components:
 
-1. **Entry Point**: `app.py` bootstraps the Flask application
-2. **Models**: Define data structures for Jobs and Events
-3. **Routes**: Handle HTTP requests for both student and staff interfaces
-4. **Services**: Business logic for file processing and management
-5. **Storage System**: File-based workflow with status directories
-6. **Templates**: Separate UI for students vs staff with shared components
+1. **Entry Point**: Next.js App Router bootstraps the React application
+2. **Types**: Define TypeScript interfaces for Jobs and Component Props
+3. **Components**: Handle UI rendering for dashboard and job management
+4. **State Management**: React Context for global state and local component state
+5. **Mock Data System**: UI prototypes with test data for development
+6. **Testing Infrastructure**: Comprehensive testing with Jest and React Testing Library
 
 ### Key Features:
 
-- **Job Lifecycle Management**: Files move through storage directories as status changes
-- **Dual User Interface**: Student submission portal and staff management dashboard
-- **Event Tracking**: Audit trail for all job state changes
-- **File Processing**: Automated handling of 3D model files with metadata extraction
-- **Template Filters**: Custom formatting for consistent display across UI
+- **Component-Based Architecture**: Reusable React components with TypeScript
+- **Mock UI Development**: v0.dev generated components for rapid prototyping
+- **Testing Framework**: Unit, integration, and E2E testing infrastructure
+- **Type Safety**: Full TypeScript coverage for development confidence
+- **Documentation System**: Structured docs, diagrams, and semantic knowledge layer
+- **AI Agent Optimization**: Clear structure and naming for AI code generation
 
-### Data Flow:
+### Current State:
 
-1. Students submit files through the main interface
-2. Files are processed and stored in the Uploaded directory
-3. Staff review and move jobs through the workflow stages
-4. Each status change is tracked with events and file moves
-5. Final pickup completes the job lifecycle 
+1. **Frontend Only**: UI components and mockups without backend integration
+2. **Testing Infrastructure**: Comprehensive test setup with working unit tests
+3. **Documentation**: Complete project documentation and visual diagrams
+4. **Type Definitions**: Full TypeScript interfaces for future backend integration
+5. **Development Tools**: Scripts, CI/CD setup, and development workflow 
