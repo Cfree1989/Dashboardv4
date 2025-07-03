@@ -3,7 +3,8 @@ import React, { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions, RenderResult } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
-import type { Job, JobStatus, Priority } from '../../v0/types/job';
+import type { Job, JobStatus, Priority } from '../../Project Information/v0/types/job';
+import { DashboardProvider } from '../../Project Information/v0/components/dashboard/dashboard-context';
 
 // Mock providers for testing
 interface MockProvidersProps {
@@ -16,19 +17,13 @@ interface MockProvidersProps {
 }
 
 function MockProviders({ children, initialDashboardState = {} }: MockProvidersProps) {
-  // In a real implementation, this would wrap with actual providers
-  // For now, we'll create a simple mock context
-  const defaultState = {
-    jobs: [],
-    selectedFilter: 'all' as const,
-    soundEnabled: true,
-    ...initialDashboardState,
-  };
-
+  // Use the real DashboardProvider with mock initial state
+  const mockJobs = initialDashboardState.jobs || [];
+  
   return (
-    <div data-testid="mock-provider" data-state={JSON.stringify(defaultState)}>
+    <DashboardProvider>
       {children}
-    </div>
+    </DashboardProvider>
   );
 }
 

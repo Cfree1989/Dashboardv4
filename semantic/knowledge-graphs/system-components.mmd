@@ -1,0 +1,12 @@
+graph TD;
+    n0["Frontend"];
+    n1["Next.js App"];
+    n2["API Route"];
+    n3["Database"];
+    n4["React Components"];
+
+    n1 -->|renders| n0;
+    n1 -->|contains| n2;
+    n2 -->|queries| n3;
+    n0 -->|"composed of"| n4;
+    n4 -->|"fetches data from"| n2; 
