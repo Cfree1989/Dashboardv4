@@ -132,14 +132,14 @@ export function JobCard({ job, currentStatus, onApprove, onReject }: JobCardProp
             {currentStatus === "UPLOADED" && (
               <>
                 <button
-                  onClick={() => onApprove(job.id)}
+                  onClick={() => onApprove?.(job.id)}
                   className="flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
                 >
                   <CheckCircle className="w-4 h-4 mr-1" />
                   Approve
                 </button>
                 <button
-                  onClick={() => onReject(job.id)}
+                  onClick={() => onReject?.(job.id)}
                   className="flex items-center px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
                 >
                   <XCircle className="w-4 h-4 mr-1" />

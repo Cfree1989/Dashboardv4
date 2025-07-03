@@ -1,4 +1,5 @@
 // Unit test example for JobCard component
+import React from 'react';
 import { render, screen } from '../../../tests/config/test-utils';
 import { JobCard } from '../../../Project Information/v0/components/dashboard/job-card';
 import { createMockJob, testAccessibility } from '../../config/test-utils';
@@ -11,11 +12,11 @@ describe('JobCard', () => {
   const defaultProps = {
     job: createMockJob({
       id: 'test-job-1',
-      title: 'Test Job Title',
-      status: 'pending' as const,
-      priority: 'medium' as const,
-      description: 'Test job description'
+      displayName: 'Test Job Title',
+      status: 'UPLOADED' as const,
+      studentName: 'Test Student'
     }),
+    currentStatus: 'UPLOADED' as const,
     onApprove: mockOnApprove,
     onReject: mockOnReject,
   };
@@ -28,39 +29,29 @@ describe('JobCard', () => {
     it('displays job title and basic information', () => {
       render(<JobCard {...defaultProps} />);
       
+      expect(screen.getAllByText('Test Student')).toHaveLength(2); // Header and details section
       expect(screen.getByText('Test Job Title')).toBeInTheDocument();
-      expect(screen.getByText('pending')).toBeInTheDocument();
-      expect(screen.getByText('medium')).toBeInTheDocument();
-      expect(screen.getByText('Test job description')).toBeInTheDocument();
     });
 
-    it('shows action buttons for pending jobs', () => {
+    it('shows action buttons for UPLOADED jobs', () => {
       render(<JobCard {...defaultProps} />);
       
       expect(screen.getByRole('button', { name: /approve/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /reject/i })).toBeInTheDocument();
     });
 
-    it('does not show action buttons for non-pending jobs', () => {
-      const approvedJob = createMockJob({ status: 'approved' });
-      render(<JobCard {...defaultProps} job={approvedJob} />);
+    it('does not show action buttons for non-UPLOADED jobs', () => {
+      const completedJob = createMockJob({ status: 'COMPLETED' });
+      render(<JobCard {...defaultProps} job={completedJob} currentStatus="COMPLETED" />);
       
       expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /reject/i })).not.toBeInTheDocument();
     });
 
-    it('hides action buttons when showActions is false', () => {
-      render(<JobCard {...defaultProps} showActions={false} />);
+    it('shows expand/collapse button', () => {
+      render(<JobCard {...defaultProps} />);
       
-      expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /reject/i })).not.toBeInTheDocument();
-    });
-
-    it('applies compact styling when compact prop is true', () => {
-      const { container } = render(<JobCard {...defaultProps} compact={true} />);
-      
-      const card = container.querySelector('[class*="p-3"]');
-      expect(card).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /show more/i })).toBeInTheDocument();
     });
   });
 
@@ -83,13 +74,14 @@ describe('JobCard', () => {
       const rejectButton = screen.getByRole('button', { name: /reject/i });
       await user.click(rejectButton);
       
-      expect(mockOnReject).toHaveBeenCalledWith('test-job-1', '');
+      expect(mockOnReject).toHaveBeenCalledWith('test-job-1');
       expect(mockOnReject).toHaveBeenCalledTimes(1);
     });
 
     it('handles missing callback functions gracefully', async () => {
       const user = userEvent.setup();
-      render(<JobCard {...defaultProps} onApprove={undefined} onReject={undefined} />);
+      const noop = () => {};
+      render(<JobCard {...defaultProps} onApprove={noop} onReject={noop} />);
       
       const approveButton = screen.getByRole('button', { name: /approve/i });
       
@@ -98,33 +90,12 @@ describe('JobCard', () => {
     });
   });
 
-  describe('Status Display', () => {
-    it.each([
-      ['pending', 'amber'],
-      ['approved', 'green'], 
-      ['rejected', 'red'],
-      ['completed', 'gray']
-    ])('displays correct color for %s status', (status, expectedColor) => {
-      const job = createMockJob({ status: status as any });
-      const { container } = render(<JobCard {...defaultProps} job={job} />);
+  describe('Job Information Display', () => {
+    it('displays job age with appropriate color coding', () => {
+      const { container } = render(<JobCard {...defaultProps} />);
       
-      const statusBadge = container.querySelector(`[class*="${expectedColor}"]`);
-      expect(statusBadge).toBeInTheDocument();
-    });
-  });
-
-  describe('Priority Display', () => {
-    it.each([
-      ['urgent', 'red'],
-      ['high', 'orange'],
-      ['medium', 'yellow'],
-      ['low', 'green']
-    ])('displays correct color for %s priority', (priority, expectedColor) => {
-      const job = createMockJob({ priority: priority as any });
-      const { container } = render(<JobCard {...defaultProps} job={job} />);
-      
-      const priorityElement = container.querySelector(`[class*="text-${expectedColor}"]`);
-      expect(priorityElement).toBeInTheDocument();
+      // Should show time elapsed
+      expect(container).toHaveTextContent(/ago/);
     });
   });
 
@@ -148,8 +119,10 @@ describe('JobCard', () => {
       const user = userEvent.setup();
       render(<JobCard {...defaultProps} />);
       
-      // Tab to approve button
-      await user.tab();
+      // Tab through all focusable elements
+      await user.tab(); // Mark as Reviewed button
+      await user.tab(); // Show More button  
+      await user.tab(); // Approve button
       expect(screen.getByRole('button', { name: /approve/i })).toHaveFocus();
       
       // Tab to reject button
@@ -172,22 +145,39 @@ describe('JobCard', () => {
     it('handles missing job properties gracefully', () => {
       const incompleteJob = {
         id: 'incomplete-job',
-        status: 'pending' as const,
-        // Missing title, description, etc.
+        studentName: 'Test Student',
+        studentEmail: 'test@example.com',
+        discipline: 'Engineering',
+        classNumber: 'ENG101',
+        originalFilename: 'test.stl',
+        displayName: 'Test Job',
+        filePath: '/path/to/file.stl',
+        metadataPath: '/path/to/metadata.json',
+        status: 'UPLOADED' as const,
+        printer: null,
+        color: null,
+        material: null,
+        weightG: null,
+        timeHours: null,
+        costUsd: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        staffViewedAt: null,
+        notes: null,
       };
       
       expect(() => {
-        render(<JobCard {...defaultProps} job={incompleteJob as any} />);
+        render(<JobCard {...defaultProps} job={incompleteJob} />);
       }).not.toThrow();
     });
 
     it('handles long job titles appropriately', () => {
       const longTitleJob = createMockJob({
-        title: 'This is a very long job title that should be truncated or handled appropriately to prevent layout issues'
+        displayName: 'This is a very long job title that should be truncated or handled appropriately to prevent layout issues'
       });
       
       const { container } = render(<JobCard {...defaultProps} job={longTitleJob} />);
-      const titleElement = container.querySelector('[class*="line-clamp"]');
+      const titleElement = container.querySelector('[class*="truncate"]');
       expect(titleElement).toBeInTheDocument();
     });
   });

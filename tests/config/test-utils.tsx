@@ -1,9 +1,9 @@
 // Custom testing utilities for Dashboard v4
 import React, { ReactElement, ReactNode } from 'react';
-import { render, RenderOptions, RenderResult } from '@testing-library/react';
+import { render, RenderOptions, RenderResult, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
-import type { Job, JobStatus, Priority } from '../../Project Information/v0/types/job';
+import type { Job, JobStatus } from '../../Project Information/v0/types/job';
 import { DashboardProvider } from '../../Project Information/v0/components/dashboard/dashboard-context';
 
 // Mock providers for testing
@@ -66,26 +66,36 @@ export { renderWithProviders as render };
 // Helper functions for creating test data
 export const createMockJob = (overrides: Partial<Job> = {}): Job => ({
   id: `job-${Math.random().toString(36).substr(2, 9)}`,
-  title: 'Test Job Title',
-  description: 'Test job description for testing purposes',
-  status: 'pending',
-  priority: 'medium',
+  studentName: 'Test Student',
+  studentEmail: 'test@example.com',
+  discipline: 'Engineering',
+  classNumber: 'ENG101',
+  originalFilename: 'test-file.stl',
+  displayName: 'Test Job Title',
+  filePath: '/path/to/test-file.stl',
+  metadataPath: '/path/to/test-metadata.json',
+  status: 'UPLOADED',
+  printer: 'Printer A',
+  color: 'PLA Black',
+  material: 'PLA',
+  weightG: 25.5,
+  timeHours: 2.5,
+  costUsd: 5.75,
   createdAt: new Date('2024-01-15T10:00:00Z').toISOString(),
   updatedAt: new Date('2024-01-15T10:00:00Z').toISOString(),
-  assignedTo: 'Test User',
-  notes: [],
+  staffViewedAt: null,
+  notes: null,
   ...overrides,
 });
 
 export const createMockJobs = (count: number = 5): Job[] => {
-  const statuses: JobStatus[] = ['pending', 'approved', 'rejected', 'completed'];
-  const priorities: Priority[] = ['low', 'medium', 'high', 'urgent'];
+  const statuses: JobStatus[] = ['UPLOADED', 'PENDING', 'READYTOPRINT', 'PRINTING', 'COMPLETED'];
   
   return Array.from({ length: count }, (_, index) => createMockJob({
     id: `job-${index + 1}`,
-    title: `Test Job ${index + 1}`,
+    studentName: `Test Student ${index + 1}`,
+    displayName: `Test Job ${index + 1}`,
     status: statuses[index % statuses.length],
-    priority: priorities[index % priorities.length],
     createdAt: new Date(Date.now() - (index * 86400000)).toISOString(), // Spread over days
   }));
 };
@@ -103,7 +113,7 @@ export const testKeyboardNavigation = async (
   const user = userEvent.setup();
   
   // Focus the first element
-  element.focus();
+  (element as HTMLElement).focus();
   
   for (let i = 0; i < expectedFocusOrder.length; i++) {
     await user.keyboard('[Tab]');
@@ -116,7 +126,7 @@ export const testKeyboardNavigation = async (
 };
 
 // API mocking helpers
-export const mockApiResponse = <T>(data: T, delay = 0): Promise<T> => {
+export const mockApiResponse = <T,>(data: T, delay = 0): Promise<T> => {
   return new Promise((resolve) => {
     setTimeout(() => resolve(data), delay);
   });
@@ -128,9 +138,9 @@ export const mockApiError = (message = 'API Error', status = 500): Promise<never
 
 // Custom matchers for common assertions
 export const expectJobCard = (container: Element, job: Job) => {
-  expect(container).toHaveTextContent(job.title);
+  expect(container).toHaveTextContent(job.displayName);
   expect(container).toHaveTextContent(job.status);
-  expect(container).toHaveTextContent(job.priority);
+  expect(container).toHaveTextContent(job.studentName);
 };
 
 export const expectModalToBeOpen = (modalTitle: string) => {
@@ -223,7 +233,7 @@ export const waitForLoadingToFinish = async () => {
 };
 
 // Custom hooks testing helper
-export const renderHook = <T>(hook: () => T): { result: { current: T }; rerender: () => void } => {
+export const renderHook = <T,>(hook: () => T): { result: { current: T }; rerender: () => void } => {
   let result: { current: T };
   
   function TestComponent() {
