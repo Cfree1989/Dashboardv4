@@ -1,0 +1,22 @@
+# Glossary of Terms for Dashboard v4 in a machine-readable format.
+
+terms:
+  - term: "Job"
+    definition: "A single unit of work submitted to the dashboard for review and approval."
+    synonyms: ["Work Item", "Task"]
+    related_terms: ["Job Status", "Approval"]
+
+  - term: "Job Status"
+    definition: "The current state of a Job in the workflow (e.g., 'Pending', 'Approved', 'Rejected')."
+    synonyms: ["State"]
+    related_terms: ["Job"]
+
+  - term: "Approval"
+    definition: "The action of a User formally accepting a submitted Job."
+    synonyms: ["Approve", "Accept"]
+    related_terms: ["Job", "User"]
+
+  - term: "User"
+    definition: "An individual who can log in to the system to review and approve Jobs."
+    synonyms: ["Reviewer"]
+    related_terms: ["Approval"] 

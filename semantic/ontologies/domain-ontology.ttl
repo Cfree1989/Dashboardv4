@@ -1,0 +1,53 @@
+@prefix : <http://dashboardv4.example.com/ontology#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+
+#
+# Ontology Header
+#
+
+: a owl:Ontology ;
+  rdfs:label "Dashboard v4 Domain Ontology" ;
+  rdfs:comment "Defines the core concepts and relationships for the job approval dashboard." .
+
+#
+# Classes
+#
+
+:Job a rdfs:Class ;
+  rdfs:label "Job" ;
+  rdfs:comment "Represents a work item that requires review and approval." .
+
+:User a rdfs:Class ;
+  rdfs:label "User" ;
+  rdfs:comment "Represents a user of the dashboard system, who can review and approve jobs." .
+
+:ApprovalAction a rdfs:Class ;
+    rdfs:label "Approval Action";
+    rdfs:comment "An action taken by a user to approve a job." .
+
+#
+# Properties / Relationships
+#
+
+:hasStatus a rdf:Property ;
+  rdfs:label "has status" ;
+  rdfs:domain :Job ;
+  rdfs:range rdfs:Literal .
+
+:submittedBy a rdf:Property ;
+    rdfs:label "submitted by" ;
+    rdfs:domain :Job ;
+    rdfs:range :User .
+
+:approvedBy a rdf:Property ;
+    rdfs:label "approved by" ;
+    rdfs:domain :ApprovalAction ;
+    rdfs:range :User .
+
+:approves a rdf:Property ;
+    rdfs:label "approves" ;
+    rdfs:comment "A relationship indicating a user approves a job via an approval action." ;
+    rdfs:domain :User ;
+    rdfs:range :Job . 
