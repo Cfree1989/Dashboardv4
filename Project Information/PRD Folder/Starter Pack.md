@@ -1,66 +1,52 @@
 # Project Repository Documentation Structure
 
-This document outlines the recommended structure and organization for project documentation to optimize AI coding agent effectiveness.
+This document outlines the essential documentation structure for your Flask + Next.js 3D print management system, optimized for AI coding assistance while maintaining simplicity.
 
-## 1. Repository Root Files
+## 1. Repository Root Files (Essential)
 
 | File | Purpose | Format |
 |------|---------|--------|
-| `README.md` | Human-first quick-start guide, links to every documentation section | Markdown |
-| `project-info.md` | "Minimal brain" – goals, domain glossary, coding conventions, repository etiquette | Markdown |
-| `CLAUDE.md` (or `CURSOR.md`) | Cursor-specific tips, bash aliases, red-flag patterns, troubleshooting recipes | Markdown |
-| `CONTRIBUTING.md` | PR rules, branch naming, commit style guidelines | Markdown |
-| `CODE_OF_CONDUCT.md` | Behavior rules for collaborators | Markdown |
-| `.editorconfig` & `.prettier*` | Enforce whitespace/formatting standards for agents | INI / JSON |
-| `LICENSE` | Open source license text | Plain text |
+| `README.md` | Quick-start guide with setup instructions and system overview | Markdown |
+| `project-info.md` | **"Minimal brain"** – project goals, 3D printing glossary, coding conventions | Markdown |
+| `CURSOR.md` | Cursor-specific tips, common commands, troubleshooting for this project | Markdown |
+| `.editorconfig` | Enforce consistent formatting (Python/TypeScript) | INI |
 
-## 2. `/docs` — Structured Textual References
+## 2. `/docs` — Core Documentation
 
-| Sub-folder | Key Files to Generate | Why They Matter for AI |
-|------------|----------------------|----------------------|
-| `requirements/` | `user-stories.md`, `use-cases.md`, `acceptance-criteria.md` | Provides unambiguous "what & why" specifications that AI agents need |
-| `api-specs/` | `openapi.yaml` (REST), `tools.mcp.json` (Model Context Protocol) | Exposes every external "tool" call in machine-readable format |
-| `context/` | `glossary.md`, `style-guide.md`, `decision-log.md` | Keeps tacit knowledge explicit → reduces hallucinations |
-| `examples/` | `sample-test.py`, `sample-service.py` | AI learns fastest from curated examples |
+| Sub-folder | Key Files | Purpose for 3D Print System |
+|------------|-----------|----------------------------|
+| `requirements/` | `user-stories.md`, `workflow-states.md` | Clear specifications for student/staff workflows |
+| `context/` | `glossary.md`, `style-guide.md` | 3D printing terminology, Flask/Next.js conventions |
+| `examples/` | `sample-api-endpoint.py`, `sample-component.tsx` | Concrete code patterns to follow |
+| `api/` | `endpoints.md` | Simple REST API documentation |
 
-## 3. `/diagrams` — Visual, Machine-Readable Blueprints
+## 3. `/diagrams` — Simple Visual References
 
-| Sub-folder | Seed Files (Text-Based Diagrams) | Recommended Syntax |
-|------------|----------------------------------|-------------------|
-| `architecture/` | `system-c4.puml`, `infra.mmd` | PlantUML / Mermaid (C4 levels 1-4) |
-| `uml/` | `domain-model.puml` (Class), `checkout-sequence.puml` (Sequence) | PlantUML |
-| `flowcharts/` | `order-lifecycle.mmd`, `error-handling.mmd` | Mermaid flowcharts |
-| `ui-mockups/` | `dashboard-mobile.png`, `dashboard-desktop.png`, `dashboard.figma.json` | Images + design-to-code export |
-| `data-models/` | `er-diagram.puml`, `schema.prisma` (or SQL) | PlantUML ER |
+| Sub-folder | Files | Purpose |
+|------------|-------|---------|
+| `architecture/` | `system-overview.mmd` | Basic system architecture (Flask API + Next.js + PostgreSQL) |
+| `workflows/` | `job-lifecycle.mmd` | Job status flow (UPLOADED → PENDING → etc.) |
 
-> **Tip:** Commit the `.puml`/`.mmd` source files—Cursor can render PNGs later.
-
-## 4. `/semantic` — Knowledge Layer
-
-| Asset | File Name | Format |
-|-------|-----------|--------|
-| Domain ontology | `fabrication-ontology.ttl` | RDF / Turtle |
-| Project knowledge graph snapshot | `kg.graphml` | GraphML / JSON-LD |
-| Semantic annotations map | `annotations.yml` | YAML linking requirements ↔ UML ↔ tests |
-
-These components deliver the "shared vocabulary" and rich context through ontologies, knowledge graphs, and semantic metadata.
-
-## 5. `/tests` & `/ci` — Automation Hooks
-
-Generate minimal templates to enable Cursor to wire tests and pipelines from day one:
+## 4. `/tests` — Testing Structure
 
 **Test Files:**
 - `/tests/__init__.py`
-- `/tests/test_placeholder.py`
+- `/tests/test_api.py` 
+- `/tests/test_workflows.py`
 
-**CI/CD:**
-- `/ci/github-actions.yml` (or `azure-pipelines.yml`)
+## 5. Essential Development Folders
 
-## 6. Optional Developer Experience Folders
+Create these initially:
 
-Create these folders empty initially; the agent will populate them as needed:
+- `/scripts/` – Helper tools (SlicerOpener setup, database utilities)
+- `/docker/` – Docker configuration files
 
-- `/scripts/` – Helper CLI tools
-- `/migrations/` – Database schema evolution
-- `/datasets/` – Sample CSV/JSON for fixtures  
-- `/notebooks/` – Exploratory Jupyter work
+## Priority Implementation Order
+
+For maximum AI effectiveness, implement in this order:
+
+1. **`project-info.md`** - Core project context and 3D printing glossary
+2. **`docs/requirements/user-stories.md`** - Student and staff user stories  
+3. **`docs/context/glossary.md`** - 3D printing terms, status definitions
+4. **`docs/examples/`** - Sample Flask routes and React components
+5. **`diagrams/workflows/job-lifecycle.mmd`** - Visual job flow diagram
