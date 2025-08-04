@@ -1,14 +1,39 @@
+'use client'
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ProtectedRoute, useAuthStatus } from '@/lib/auth-middleware';
+import { useAuth } from '@/lib/auth-context';
 
-export default function DashboardPage() {
+function DashboardContent() {
+  const { logout } = useAuth();
+  const { workstationId, staffName } = useAuthStatus();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">3D Print Dashboard</h1>
-        <p className="text-muted-foreground">
-          Manage 3D print jobs and workflow status
-        </p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">3D Print Dashboard</h1>
+          <p className="text-muted-foreground">
+            Manage 3D print jobs and workflow status
+          </p>
+          {workstationId && staffName && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Logged in as <strong>{staffName}</strong> on <strong>{workstationId}</strong>
+            </p>
+          )}
+        </div>
+        <Button variant="outline" onClick={handleLogout}>
+          Logout
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -83,5 +108,16 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute
+      requireAuth={true}
+      requireStaffSelection={true}
+    >
+      <DashboardContent />
+    </ProtectedRoute>
   );
 }
