@@ -1,0 +1,31 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{py,pyx}]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+[*.{js,ts,jsx,tsx,json}]
+indent_style = space
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[{package.json,*.yml}]
+indent_style = space
+indent_size = 2
+
+[Dockerfile*]
+indent_style = space
+indent_size = 2
