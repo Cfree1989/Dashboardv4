@@ -64,12 +64,14 @@ def create_app(config_name=None):
     from app.routes.submit import bp as submit_bp
     from app.routes.admin import bp as admin_bp
     from app.routes.analytics import bp as analytics_bp
+    from app.routes.email import bp as email_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
     app.register_blueprint(jobs_bp, url_prefix='/api/v1/jobs')
     app.register_blueprint(submit_bp, url_prefix='/api/v1')
     app.register_blueprint(admin_bp, url_prefix='/api/v1/admin')
     app.register_blueprint(analytics_bp, url_prefix='/api/v1')
+    app.register_blueprint(email_bp, url_prefix='/api/v1')
     
     # Health check endpoint (no authentication required)
     @app.route('/api/v1/health')

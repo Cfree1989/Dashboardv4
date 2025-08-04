@@ -12,6 +12,7 @@ from app.models.job import Job
 from app.models.event import Event
 from app.models.staff import Staff
 from app.utils.auth import require_workstation_auth, require_staff_attribution
+from app.services.queue_service import queue_service
 
 bp = Blueprint('jobs', __name__)
 
@@ -343,6 +344,17 @@ def approve_job(job_id):
         
         db.session.commit()
         
+        # Queue approval notification email
+        try:
+            rq_job_id = queue_service.queue_approval_notification(job.id, g.staff_name)
+            if rq_job_id:
+                current_app.logger.info(f"Queued approval notification for job {job_id} - RQ Job: {rq_job_id}")
+            else:
+                current_app.logger.warning(f"Failed to queue approval notification for job {job_id}")
+        except Exception as e:
+            current_app.logger.error(f"Error queuing approval notification for job {job_id}: {str(e)}")
+            # Don't fail the approval if email queueing fails
+        
         current_app.logger.info(f"Job {job_id} approved by {g.staff_name} on {g.workstation_id}")
         
         return jsonify({
@@ -431,6 +443,18 @@ def reject_job(job_id):
         db.session.add(rejection_event)
         
         db.session.commit()
+        
+        # Queue rejection notification email
+        try:
+            rejection_reason_text = custom_reason if custom_reason else ', '.join(reasons)
+            rq_job_id = queue_service.queue_rejection_notification(job.id, g.staff_name, rejection_reason_text)
+            if rq_job_id:
+                current_app.logger.info(f"Queued rejection notification for job {job_id} - RQ Job: {rq_job_id}")
+            else:
+                current_app.logger.warning(f"Failed to queue rejection notification for job {job_id}")
+        except Exception as e:
+            current_app.logger.error(f"Error queuing rejection notification for job {job_id}: {str(e)}")
+            # Don't fail the rejection if email queueing fails
         
         current_app.logger.info(f"Job {job_id} rejected by {g.staff_name} on {g.workstation_id}")
         
@@ -590,6 +614,17 @@ def mark_complete(job_id):
         db.session.add(event)
         
         db.session.commit()
+        
+        # Queue completion notification email
+        try:
+            rq_job_id = queue_service.queue_completion_notification(job.id, g.staff_name)
+            if rq_job_id:
+                current_app.logger.info(f"Queued completion notification for job {job_id} - RQ Job: {rq_job_id}")
+            else:
+                current_app.logger.warning(f"Failed to queue completion notification for job {job_id}")
+        except Exception as e:
+            current_app.logger.error(f"Error queuing completion notification for job {job_id}: {str(e)}")
+            # Don't fail the completion if email queueing fails
         
         current_app.logger.info(f"Job {job_id} marked as complete by {g.staff_name}")
         

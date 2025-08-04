@@ -55,11 +55,18 @@ class FileService:
         Args:
             storage_base_path: Base path for file storage (defaults to config)
         """
-        self.storage_base_path = storage_base_path or current_app.config.get('STORAGE_BASE_PATH', './storage')
-        self.storage_path = Path(self.storage_base_path)
-        
-        # Ensure storage directories exist
-        self._ensure_storage_directories()
+        self._storage_base_path = storage_base_path  # Store for later resolution
+        self._storage_path = None
+        self._initialized = False
+    
+    def _initialize_storage(self):
+        """Initialize storage paths and directories (lazy initialization)."""
+        if not self._initialized:
+            from flask import current_app
+            self.storage_base_path = self._storage_base_path or current_app.config.get('STORAGE_BASE_PATH', './storage')
+            self.storage_path = Path(self.storage_base_path)
+            self._ensure_storage_directories()
+            self._initialized = True
     
     def _ensure_storage_directories(self):
         """Create storage directories if they don't exist."""
@@ -85,6 +92,8 @@ class FileService:
         Raises:
             FileValidationError: If validation fails
         """
+        self._initialize_storage()
+        
         if not file or not file.filename:
             raise FileValidationError("No file provided")
         
@@ -230,6 +239,8 @@ class FileService:
         Raises:
             FileOperationError: If save operation fails
         """
+        self._initialize_storage()
+        
         try:
             # Validate file first
             file_info = self.validate_file(file)
@@ -437,6 +448,8 @@ class FileService:
         Returns:
             Dictionary with storage statistics
         """
+        self._initialize_storage()
+        
         try:
             storage_info = {
                 'base_path': str(self.storage_path),

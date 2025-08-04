@@ -11,6 +11,7 @@ from app.database import db
 from app.models.job import Job
 from app.models.event import Event
 from app.services.file_service import file_service, FileValidationError, FileOperationError
+from app.services.queue_service import queue_service
 import uuid
 
 bp = Blueprint('submit', __name__)
@@ -159,6 +160,17 @@ def submit_job():
         
         # Commit transaction
         db.session.commit()
+        
+        # Queue submission confirmation email
+        try:
+            rq_job_id = queue_service.queue_submission_confirmation(job.id)
+            if rq_job_id:
+                current_app.logger.info(f"Queued submission confirmation for job {job.id} - RQ Job: {rq_job_id}")
+            else:
+                current_app.logger.warning(f"Failed to queue submission confirmation for job {job.id}")
+        except Exception as e:
+            current_app.logger.error(f"Error queuing submission confirmation for job {job.id}: {str(e)}")
+            # Don't fail the submission if email queueing fails
         
         current_app.logger.info(f"Job submitted successfully: {job.id} by {student_email}")
         
