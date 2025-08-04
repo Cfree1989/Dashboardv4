@@ -9,7 +9,7 @@ import secrets
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import func
-from app import db
+from app.database import db
 
 
 class Job(db.Model):

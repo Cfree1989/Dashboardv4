@@ -26,6 +26,45 @@ def reset_db():
     print("Database reset complete.")
 
 @app.cli.command()
+def init_migrations():
+    """Initialize database migrations."""
+    import subprocess
+    try:
+        result = subprocess.run(['flask', 'db', 'init'], 
+                              capture_output=True, text=True, check=True)
+        print("Migration repository initialized successfully.")
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Error initializing migrations: {e}")
+        print(e.stderr)
+
+@app.cli.command()
+def create_migration():
+    """Create a new database migration."""
+    import subprocess
+    try:
+        result = subprocess.run(['flask', 'db', 'migrate', '-m', 'Initial migration'], 
+                              capture_output=True, text=True, check=True)
+        print("Migration created successfully.")
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Error creating migration: {e}")
+        print(e.stderr)
+
+@app.cli.command()
+def upgrade_db():
+    """Apply database migrations."""
+    import subprocess
+    try:
+        result = subprocess.run(['flask', 'db', 'upgrade'], 
+                              capture_output=True, text=True, check=True)
+        print("Database upgraded successfully.")
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Error upgrading database: {e}")
+        print(e.stderr)
+
+@app.cli.command()
 def seed_db():
     """Seed database with sample data for development."""
     from app.models.staff import Staff

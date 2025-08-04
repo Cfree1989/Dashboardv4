@@ -14,8 +14,10 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 
-# Initialize extensions
-db = SQLAlchemy()
+# Import database instance
+from app.database import db
+
+# Initialize other extensions
 migrate = Migrate()
 jwt = JWTManager()
 mail = Mail()

@@ -5,7 +5,7 @@ Supports staff turnover while preserving historical attribution in audit logs.
 """
 
 from datetime import datetime
-from app import db
+from app.database import db
 
 
 class Staff(db.Model):

@@ -5,7 +5,7 @@ Records actual weight, final cost, and Tiger-Cash transaction details.
 """
 
 from datetime import datetime
-from app import db
+from app.database import db
 
 
 class Payment(db.Model):

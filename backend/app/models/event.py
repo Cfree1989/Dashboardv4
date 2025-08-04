@@ -5,7 +5,7 @@ Provides comprehensive logging with staff attribution and workstation tracking.
 """
 
 from datetime import datetime
-from app import db
+from app.database import db
 
 
 class Event(db.Model):
