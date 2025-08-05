@@ -80,7 +80,8 @@ def create_app(config_name=None):
         """System health check endpoint for monitoring."""
         try:
             # Test database connection
-            db.session.execute('SELECT 1')
+            from sqlalchemy import text
+            db.session.execute(text('SELECT 1'))
             db_status = 'ok'
         except Exception:
             db_status = 'error'

@@ -7,7 +7,7 @@ interface JobCardProps {
   id: string;
   studentName: string;
   projectTitle: string;
-  status: 'PENDING' | 'APPROVED' | 'PRINTING' | 'COMPLETED' | 'REJECTED';
+  status: 'UPLOADED' | 'PENDING' | 'READYTOPRINT' | 'PRINTING' | 'COMPLETED' | 'PAIDPICKEDUP' | 'REJECTED' | 'ARCHIVED';
   fileName: string;
   submittedAt: string;
   estimatedCost?: number;
@@ -24,12 +24,29 @@ export function JobCard({
 }: JobCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'UPLOADED': return 'bg-blue-100 text-blue-800';
       case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'APPROVED': return 'bg-green-100 text-green-800';
-      case 'PRINTING': return 'bg-blue-100 text-blue-800';
-      case 'COMPLETED': return 'bg-purple-100 text-purple-800';
+      case 'READYTOPRINT': return 'bg-green-100 text-green-800';
+      case 'PRINTING': return 'bg-purple-100 text-purple-800';
+      case 'COMPLETED': return 'bg-indigo-100 text-indigo-800';
+      case 'PAIDPICKEDUP': return 'bg-emerald-100 text-emerald-800';
       case 'REJECTED': return 'bg-red-100 text-red-800';
+      case 'ARCHIVED': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'UPLOADED': return 'New Upload';
+      case 'PENDING': return 'Pending Approval';
+      case 'READYTOPRINT': return 'Ready to Print';
+      case 'PRINTING': return 'Printing';
+      case 'COMPLETED': return 'Completed';
+      case 'PAIDPICKEDUP': return 'Picked Up';
+      case 'REJECTED': return 'Rejected';
+      case 'ARCHIVED': return 'Archived';
+      default: return status;
     }
   };
 
@@ -44,7 +61,7 @@ export function JobCard({
             </p>
           </div>
           <Badge className={getStatusColor(status)}>
-            {status}
+            {getStatusDisplay(status)}
           </Badge>
         </div>
       </CardHeader>
@@ -58,14 +75,12 @@ export function JobCard({
             )}
           </div>
           <div className="flex gap-2">
-            {status === 'PENDING' && (
-              <>
-                <Button size="sm" variant="outline">
-                  Review
-                </Button>
-              </>
+            {status === 'UPLOADED' && (
+              <Button size="sm" variant="outline">
+                Review
+              </Button>
             )}
-            {status === 'APPROVED' && (
+            {status === 'READYTOPRINT' && (
               <Button size="sm">
                 Mark Printing
               </Button>
@@ -73,6 +88,11 @@ export function JobCard({
             {status === 'PRINTING' && (
               <Button size="sm">
                 Mark Complete
+              </Button>
+            )}
+            {status === 'COMPLETED' && (
+              <Button size="sm" variant="outline">
+                Mark Picked Up
               </Button>
             )}
           </div>

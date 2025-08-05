@@ -977,6 +977,33 @@ def delete_job(job_id):
         }), 500
 
 
+@bp.route('/stats', methods=['GET'])
+@require_workstation_auth
+def get_dashboard_stats():
+    """Get dashboard statistics."""
+    try:
+        stats = db.session.query(
+            db.func.count(Job.id).label('total'),
+            db.func.sum(db.case([(Job.status == 'UPLOADED', 1)], else_=0)).label('uploaded'),
+            db.func.sum(db.case([(Job.status == 'PENDING', 1)], else_=0)).label('pending'),
+            db.func.sum(db.case([(Job.status == 'READYTOPRINT', 1)], else_=0)).label('readyToPrint'),
+            db.func.sum(db.case([(Job.status == 'PRINTING', 1)], else_=0)).label('printing'),
+            db.func.sum(db.case([(Job.status == 'COMPLETED', 1)], else_=0)).label('completed')
+        ).one()
+
+        return jsonify({
+            'total': stats.total or 0,
+            'uploaded': stats.uploaded or 0,
+            'pending': stats.pending or 0,
+            'readyToPrint': stats.readyToPrint or 0,
+            'printing': stats.printing or 0,
+            'completed': stats.completed or 0
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error getting dashboard stats: {str(e)}")
+        return jsonify({'error': 'Failed to retrieve dashboard statistics'}), 500
+
+
 @bp.route('/storage-info', methods=['GET'])
 @require_workstation_auth
 def get_storage_info():

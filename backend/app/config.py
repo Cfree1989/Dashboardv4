@@ -75,11 +75,7 @@ class DevelopmentConfig(Config):
         'postgresql://printuser:dev_password@localhost:5432/printdb'
     
     # Relaxed CORS for development
-    CORS_ORIGINS = [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:3001',  # Alternative dev port
-    ]
+    CORS_ORIGINS = ['*']  # Allow all origins in development
     
     # Development-specific settings
     SQLALCHEMY_ECHO = True  # Log SQL queries in development
