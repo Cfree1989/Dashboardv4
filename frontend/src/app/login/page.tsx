@@ -11,24 +11,21 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
-// Workstation options (these would typically come from environment config)
+// Workstation options based on masterplan
 const WORKSTATIONS = [
-  { id: 'workstation-1', name: 'Workstation 1' },
-  { id: 'workstation-2', name: 'Workstation 2' },
-  { id: 'workstation-3', name: 'Workstation 3' },
-  { id: 'admin-station', name: 'Admin Station' },
+  { id: 'front-desk', name: 'Front Desk Computer' },
+  { id: 'lab-computer', name: 'Lab Computer' },
 ];
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, isAuthenticated, isLoading, staff, error, clearError } = useAuth();
+  const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
 
-  // Form state
+  // Form state - simplified to just workstation and password
   const [formData, setFormData] = useState({
     workstationId: '',
     password: '',
-    staffId: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,10 +75,6 @@ function LoginForm() {
       errors.password = 'Please enter the workstation password';
     }
 
-    if (!formData.staffId) {
-      errors.staffId = 'Please select your name';
-    }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -99,8 +92,7 @@ function LoginForm() {
     try {
       const success = await login(
         formData.workstationId,
-        formData.password,
-        parseInt(formData.staffId, 10)
+        formData.password
       );
 
       if (success) {
@@ -196,37 +188,10 @@ function LoginForm() {
               )}
             </div>
 
-            {/* Staff Selection */}
+            {/* Info about staff attribution */}
             <div className="space-y-2">
-              <Label htmlFor="staffName">
-                Your Name <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={formData.staffId}
-                onValueChange={(value) => handleInputChange('staffId', value)}
-                disabled={isSubmitting || staff.length === 0}
-              >
-                <SelectTrigger className={formErrors.staffId ? 'border-destructive' : ''}>
-                  <SelectValue placeholder={
-                    staff.length === 0 ? "Loading staff..." : "Select your name"
-                  } />
-                </SelectTrigger>
-                <SelectContent>
-                  {staff.filter(s => s.is_active).map((staffMember) => (
-                    <SelectItem key={staffMember.id} value={staffMember.id.toString()}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{staffMember.name}</span>
-                        <span className="text-sm text-muted-foreground">{staffMember.role}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formErrors.staffId && (
-                <p className="text-sm text-destructive">{formErrors.staffId}</p>
-              )}
               <p className="text-sm text-muted-foreground">
-                This will be used for action attribution and audit trails
+                Staff attribution will be selected per-action on the dashboard
               </p>
             </div>
 

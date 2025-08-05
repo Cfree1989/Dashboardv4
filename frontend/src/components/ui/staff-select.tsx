@@ -88,7 +88,14 @@ export function StaffSelect({
   className,
   error,
 }: StaffSelectProps) {
-  const { staff, selectedStaffId, selectStaff, isLoading } = useAuth();
+  const { staff, selectedStaffId, selectStaff, isLoading, loadStaffList } = useAuth();
+  
+  // Load staff list on mount if not already loaded
+  React.useEffect(() => {
+    if (staff.length === 0) {
+      loadStaffList();
+    }
+  }, [staff.length, loadStaffList]);
 
   // Filter to only show active staff members
   const activeStaff = staff.filter(s => s.is_active);

@@ -24,10 +24,10 @@ def load_workstation_config():
     """
     config_str = os.environ.get('WORKSTATION_CREDENTIALS')
     if not config_str:
-        # Default development workstations
+        # Default development workstations - simple shared password
         return {
-            'front-desk': 'dev-front-desk-pass',
-            'lab-computer': 'dev-lab-computer-pass'
+            'front-desk': 'Fabrication',
+            'lab-computer': 'Fabrication'
         }
     
     try:
@@ -35,8 +35,8 @@ def load_workstation_config():
     except json.JSONDecodeError:
         current_app.logger.error("Invalid WORKSTATION_CREDENTIALS format. Using defaults.")
         return {
-            'front-desk': 'dev-front-desk-pass',
-            'lab-computer': 'dev-lab-computer-pass'
+            'front-desk': 'Fabrication',
+            'lab-computer': 'Fabrication'
         }
 
 

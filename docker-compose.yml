@@ -1,11 +1,5 @@
 # Docker Compose configuration for 3D Print Management System
-<<<<<<< HEAD
-# Copy this to docker-compose.yml and modify as needed
-=======
 # Development environment setup
->>>>>>> 80d5992f13690af96f06fdfb12199316e22ebc07
-
-version: '3.8'
 
 services:
   # PostgreSQL Database
@@ -18,10 +12,6 @@ services:
       POSTGRES_PASSWORD: dev_password_change_in_production
     volumes:
       - postgres_data:/var/lib/postgresql/data
-<<<<<<< HEAD
-      - ./backend/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-=======
->>>>>>> 80d5992f13690af96f06fdfb12199316e22ebc07
     ports:
       - "5432:5432"
     healthcheck:
@@ -53,14 +43,12 @@ services:
       - DATABASE_URL=postgresql://printuser:dev_password_change_in_production@db:5432/printdb  
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev_secret_key_change_in_production
-<<<<<<< HEAD
       - MAIL_SERVER=smtp.office365.com
       - MAIL_PORT=587
       - MAIL_USE_TLS=true
-      - MAIL_USERNAME=your_email@university.edu
-      - MAIL_PASSWORD=your_email_password
-=======
->>>>>>> 80d5992f13690af96f06fdfb12199316e22ebc07
+      - MAIL_USERNAME=coad-fablab@lsu.edu
+      - MAIL_PASSWORD=CoAD-FABLAB
+      - MAIL_DEFAULT_SENDER=coad-fablab@lsu.edu
       - STORAGE_BASE_PATH=/app/storage
     volumes:
       - ./backend:/app
@@ -72,12 +60,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-<<<<<<< HEAD
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    command: python run.py
 
   # RQ Background Worker
   worker:
@@ -93,8 +76,9 @@ services:
       - MAIL_SERVER=smtp.office365.com
       - MAIL_PORT=587
       - MAIL_USE_TLS=true
-      - MAIL_USERNAME=your_email@university.edu
-      - MAIL_PASSWORD=your_email_password
+      - MAIL_USERNAME=coad-fablab@lsu.edu
+      - MAIL_PASSWORD=CoAD-FABLAB
+      - MAIL_DEFAULT_SENDER=coad-fablab@lsu.edu
       - STORAGE_BASE_PATH=/app/storage
     volumes:
       - ./backend:/app
@@ -119,9 +103,6 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-=======
-    command: python run.py
->>>>>>> 80d5992f13690af96f06fdfb12199316e22ebc07
 
 volumes:
   postgres_data:
