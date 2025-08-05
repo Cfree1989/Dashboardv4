@@ -1,11 +1,78 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+'use client';
+
+import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { SubmissionForm } from '@/components/submission/submission-form';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { CheckCircle } from 'lucide-react';
+
+interface JobData {
+  id: string;
+  display_name: string;
+  status: string;
+  created_at: string;
+  estimated_cost: string;
+}
 
 export default function SubmitPage() {
+  const [submittedJob, setSubmittedJob] = useState<JobData | null>(null);
+
+  const handleSubmissionSuccess = (jobData: JobData) => {
+    setSubmittedJob(jobData);
+  };
+
+  const handleSubmitAnother = () => {
+    setSubmittedJob(null);
+  };
+
+  if (submittedJob) {
+    return (
+      <div className="container mx-auto max-w-2xl p-6">
+        <div className="mb-8 text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold tracking-tight text-green-600">Submission Successful!</h1>
+          <p className="text-muted-foreground">
+            Your 3D print job has been submitted successfully
+          </p>
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold mb-2">Job Details</h2>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <p><strong>Job ID:</strong> {submittedJob.id}</p>
+                  <p><strong>File Name:</strong> {submittedJob.display_name}</p>
+                  <p><strong>Status:</strong> {submittedJob.status}</p>
+                  <p><strong>Estimated Cost:</strong> {submittedJob.estimated_cost}</p>
+                  <p><strong>Submitted:</strong> {new Date(submittedJob.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p><strong>What happens next:</strong></p>
+                <ol className="list-decimal list-inside space-y-1 ml-4">
+                  <li>Staff will review your submission within 24-48 hours</li>
+                  <li>If approved, you'll receive an email with cost details and confirmation link</li>
+                  <li>Click the confirmation link to proceed with printing</li>
+                  <li>You'll be notified when your print is complete and ready for pickup</li>
+                  <li>Payment is due upon pickup of completed print</li>
+                </ol>
+              </div>
+
+              <div className="flex justify-center pt-4">
+                <Button onClick={handleSubmitAnother}>
+                  Submit Another Job
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto max-w-2xl p-6">
       <div className="mb-8">
@@ -15,107 +82,7 @@ export default function SubmitPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Job Submission Form</CardTitle>
-          <CardDescription>
-            Fill out all required fields to submit your 3D print request
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <form className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="studentName">Student Name *</Label>
-                <Input
-                  id="studentName"
-                  placeholder="Enter your full name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="studentEmail">Email Address *</Label>
-                <Input
-                  id="studentEmail"
-                  type="email"
-                  placeholder="your.email@university.edu"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="projectTitle">Project Title *</Label>
-              <Input
-                id="projectTitle"
-                placeholder="Brief title for your 3D print project"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="file">3D Model File *</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".stl,.obj,.3mf,.gcode"
-                required
-              />
-              <p className="text-sm text-muted-foreground">
-                Supported formats: STL, OBJ, 3MF, G-code (max 50MB)
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="Any special requirements, colors, or instructions..."
-                rows={4}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="infillPercentage">Infill Percentage</Label>
-                <Input
-                  id="infillPercentage"
-                  type="number"
-                  placeholder="20"
-                  min="0"
-                  max="100"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Leave blank for default (20%)
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="layerHeight">Layer Height (mm)</Label>
-                <Input
-                  id="layerHeight"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.2"
-                  min="0.1"
-                  max="0.3"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Leave blank for default (0.2mm)
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-6">
-              <Button type="submit" className="flex-1">
-                Submit Print Job
-              </Button>
-              <Button type="button" variant="outline">
-                Clear Form
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <SubmissionForm onSuccess={handleSubmissionSuccess} />
 
       <Card className="mt-6">
         <CardContent className="pt-6">

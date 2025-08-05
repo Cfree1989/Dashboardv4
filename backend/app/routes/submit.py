@@ -13,6 +13,7 @@ from app.models.event import Event
 from app.services.file_service import file_service, FileValidationError, FileOperationError
 from app.services.queue_service import queue_service
 import uuid
+from datetime import datetime
 
 bp = Blueprint('submit', __name__)
 
@@ -146,8 +147,8 @@ def submit_job():
         # Create submission event
         submission_event = Event(
             job_id=job.id,
-            event_type='JobSubmitted',
-            triggered_by=None,  # Student submission
+            event_type=Event.EVENT_JOB_CREATED,
+            triggered_by='student',  # Student submission
             workstation_id='student_portal',
             details={
                 'file_info': file_info,
@@ -237,7 +238,7 @@ def confirm_job(token):
         
         # Confirm the job
         job.student_confirmed = True
-        job.student_confirmed_at = db.func.now()
+        job.student_confirmed_at = datetime.utcnow()
         job.status = Job.STATUS_READYTOPRINT
         
         # Move files to ReadyToPrint directory
@@ -329,7 +330,7 @@ def resend_confirmation():
         
         # Generate new confirmation token
         new_token = job.generate_confirmation_token()
-        job.confirmation_last_sent_at = db.func.now()
+        job.confirmation_last_sent_at = datetime.utcnow()
         
         # Create resend event
         resend_event = Event(
