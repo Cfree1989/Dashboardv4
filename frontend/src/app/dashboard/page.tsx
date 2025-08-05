@@ -159,6 +159,7 @@ function DashboardContent() {
                 <JobCard
                   key={job.id}
                   {...formatJobForCard(job)}
+                  onRefresh={refresh}
                 />
               ))}
               {jobs.length > 10 && (
