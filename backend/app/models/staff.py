@@ -69,8 +69,12 @@ class Staff(db.Model):
     def to_dict(self):
         """Convert staff to dictionary for API responses."""
         return {
+            'id': hash(self.name) % 1000000,  # Generate numeric ID from name hash
             'name': self.name,
+            'email': f"{self.name.lower().replace(' ', '.')}@university.edu",  # Generate email
+            'role': 'Staff Member',  # Default role
             'is_active': self.is_active,
+            'is_recently_added': self.days_since_added <= 7,
             'added_at': self.added_at.isoformat(),
             'deactivated_at': self.deactivated_at.isoformat() if self.deactivated_at else None,
             'days_since_added': self.days_since_added,

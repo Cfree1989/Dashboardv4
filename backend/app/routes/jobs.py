@@ -984,11 +984,11 @@ def get_dashboard_stats():
     try:
         stats = db.session.query(
             db.func.count(Job.id).label('total'),
-            db.func.sum(db.case([(Job.status == 'UPLOADED', 1)], else_=0)).label('uploaded'),
-            db.func.sum(db.case([(Job.status == 'PENDING', 1)], else_=0)).label('pending'),
-            db.func.sum(db.case([(Job.status == 'READYTOPRINT', 1)], else_=0)).label('readyToPrint'),
-            db.func.sum(db.case([(Job.status == 'PRINTING', 1)], else_=0)).label('printing'),
-            db.func.sum(db.case([(Job.status == 'COMPLETED', 1)], else_=0)).label('completed')
+            db.func.sum(db.case((Job.status == 'UPLOADED', 1), else_=0)).label('uploaded'),
+            db.func.sum(db.case((Job.status == 'PENDING', 1), else_=0)).label('pending'),
+            db.func.sum(db.case((Job.status == 'READYTOPRINT', 1), else_=0)).label('readyToPrint'),
+            db.func.sum(db.case((Job.status == 'PRINTING', 1), else_=0)).label('printing'),
+            db.func.sum(db.case((Job.status == 'COMPLETED', 1), else_=0)).label('completed')
         ).one()
 
         return jsonify({
