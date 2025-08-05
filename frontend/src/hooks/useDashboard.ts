@@ -67,16 +67,13 @@ export function useDashboard() {
 
   // Fetch dashboard statistics
   const fetchStats = useCallback(async () => {
-    console.log('🔍 DEBUG: fetchStats called');
     try {
       setStatsLoading(true);
       setError(null);
-      console.log('🔍 DEBUG: About to call apiClient.getDashboardStats()');
       const statsData = await apiClient.getDashboardStats();
-      console.log('🔍 DEBUG: getDashboardStats response:', statsData);
       setStats(statsData);
     } catch (error) {
-      console.error('❌ DEBUG: fetchStats error:', error);
+      console.error('Failed to fetch dashboard stats:', error);
       if (error instanceof ApiClientError) {
         setError(`Failed to load statistics: ${error.message}`);
       } else {
@@ -84,7 +81,6 @@ export function useDashboard() {
       }
     } finally {
       setStatsLoading(false);
-      console.log('🔍 DEBUG: fetchStats completed');
     }
   }, []);
 
@@ -95,25 +91,20 @@ export function useDashboard() {
     page?: number;
     limit?: number;
   } = {}) => {
-    console.log('🔍 DEBUG: fetchJobs called with params:', params);
     try {
       setJobsLoading(true);
       setError(null);
       
-      const requestParams = {
+      const response = await apiClient.getJobs({
         page: 1,
         limit: 50,
         ...params,
-      };
-      console.log('🔍 DEBUG: About to call apiClient.getJobs() with:', requestParams);
-      
-      const response = await apiClient.getJobs(requestParams);
-      console.log('🔍 DEBUG: getJobs response:', response);
+      });
       
       setJobs(response.jobs);
       setPagination(response.pagination);
     } catch (error) {
-      console.error('❌ DEBUG: fetchJobs error:', error);
+      console.error('Failed to fetch jobs:', error);
       if (error instanceof ApiClientError) {
         setError(`Failed to load jobs: ${error.message}`);
       } else {
@@ -121,23 +112,19 @@ export function useDashboard() {
       }
     } finally {
       setJobsLoading(false);
-      console.log('🔍 DEBUG: fetchJobs completed');
     }
   }, []);
 
   // Refresh all data
   const refresh = useCallback(async () => {
-    console.log('🔍 DEBUG: refresh() called - starting parallel fetch');
     await Promise.all([
       fetchStats(),
       fetchJobs(),
     ]);
-    console.log('🔍 DEBUG: refresh() completed');
   }, [fetchStats, fetchJobs]);
 
   // Initial data load
   useEffect(() => {
-    console.log('🔍 DEBUG: useDashboard useEffect triggered - calling refresh()');
     refresh();
   }, [refresh]);
 
